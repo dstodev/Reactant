@@ -1,4 +1,4 @@
-#include "ui.h"
+#include "reactant_ui.h"
 
 menu_item_t * create_button(char * label, int (* callback)(WINDOW *))
 {
@@ -32,8 +32,8 @@ panel_t * create_panel(char * label, int y, int x)
 {
     if (label != NULL)
     {
-		// TODO: Don't allow panels to be created inside of eachother
-		
+        // TODO: Don't allow panels to be created inside of eachother
+
         panel_t * panel = malloc(sizeof(struct _panel_t));
 
         panel->label = malloc(strlen(label) + 1);
@@ -79,8 +79,8 @@ void free_panel(panel_t * panel)
 
 void add_panel_button(panel_t * panel, menu_item_t * button)
 {
-	int y, x;
-	
+    int y, x;
+
     if (panel != NULL)
     {
         panel->items = realloc(panel->items, sizeof(menu_item_t *) * ((size_t) panel->num_items + 1));
@@ -105,14 +105,14 @@ void add_panel_button(panel_t * panel, menu_item_t * button)
 }
 
 void draw_panel(panel_t * panel)
-{	
+{
     if (panel)
     {
-		// int max_y = getmaxy(panel->window);
-		
+        // int max_y = getmaxy(panel->window);
+
         // TODO: DEBUG
         // wbkgd(panel->window, COLOR_PAIR(3));
-		
+
         if (panel->selected == 1)
         {
             wattroff(panel->window, A_DIM);
@@ -224,24 +224,24 @@ void add_menu_panel(menu_t * menu, panel_t * panel)
 
 int operate_menu(menu_t * menu)
 {
-	// Return value of this function
-	int quit = 0;
-	
+    // Return value of this function
+    int quit = 0;
+
     if (menu)
-    {		
+    {
         // Menu
         int sel_p = 0; // Selected panel index
         int sel_b = 0; // Selected button index
 
         // Navigational
-		int panel_next = 0;
-		int panel_offset_y = 0;
-		int panel_offset_x = 0;
-		// Up & down
-		int panel_width = 0;
-		int panel_width_next = 0;
-		int offset_y = 0;
-		// Left & right
+        int panel_next = 0;
+        int panel_offset_y = 0;
+        int panel_offset_x = 0;
+        // Up & down
+        int panel_width = 0;
+        int panel_width_next = 0;
+        int offset_y = 0;
+        // Left & right
         int sel_x = 0;
         int offset_x = 0;
 
@@ -273,7 +273,7 @@ int operate_menu(menu_t * menu)
                 case KEY_RESIZE: // Window resize
                     getmaxyx(menu->window, max_y, max_x);
 
-					// TODO: Panel crashes if resized too small?
+                    // TODO: Panel crashes if resized too small?
 
                     if (max_y == 0 || max_x == 0)
                     {
@@ -281,265 +281,265 @@ int operate_menu(menu_t * menu)
                     }
                     break;
 
-				case 0x57: // 'W'
+                case 0x57: // 'W'
                 case 0x77: // 'w'
                 case KEY_UP: // Up arrow
-					// If moving within panel
-					if(sel_b > 0 && sel_b <= menu->panels[sel_p]->num_items - 1)
-					{
-						menu->panels[sel_p]->items[sel_b]->selected = 0;
-						menu->panels[sel_p]->items[--sel_b]->selected = 1;
-					}
-					// Moving between panels
-					else
-					{
-						panel_next = -1;
-						panel_offset_y = -1;
-						panel_offset_x = -1;
-						offset_y = 0;
-						
-						// Width of currently selected panel
-						panel_width = getmaxx(menu->panels[sel_p]->window);
+                    // If moving within panel
+                    if(sel_b > 0 && sel_b <= menu->panels[sel_p]->num_items - 1)
+                    {
+                        menu->panels[sel_p]->items[sel_b]->selected = 0;
+                        menu->panels[sel_p]->items[--sel_b]->selected = 1;
+                    }
+                    // Moving between panels
+                    else
+                    {
+                        panel_next = -1;
+                        panel_offset_y = -1;
+                        panel_offset_x = -1;
+                        offset_y = 0;
 
-						// Get closest panel beneath currently selected panel
-						for(int i = 0; i < menu->num_panels; ++i)
-						{
-							// Width of iteration panel
-							panel_width_next = getmaxx(menu->panels[i]->window);
-							
-							// If panel is below selected panel and intersects current X bounds
-							if(menu->panels[i]->coord.y < menu->panels[sel_p]->coord.y
-							&& menu->panels[i]->coord.x + panel_width_next - 1 >= menu->panels[sel_p]->coord.x
-							&& menu->panels[i]->coord.x <= menu->panels[sel_p]->coord.x + panel_width - 1)
-							{								
-								// If panel is closer (Y axis) to selected panel
-								offset_y = menu->panels[sel_p]->coord.y - menu->panels[i]->coord.y;
-								if(offset_y < panel_offset_y || panel_offset_y == -1)
-								{
-									panel_next = i;
-									panel_offset_y = offset_y;
-									panel_offset_x = menu->panels[i]->coord.x;
-									break;
-								}
-								// If panel is on the same Y axis
-								// TODO: Test this
-								else if(offset_y == panel_offset_y)
-								{
-									// Select leftmost item. panel_offset_x will always be set at this point, because
-									// panel_offset_y must be set, which requires the previous condition to be met
-									// at least once
-									if(menu->panels[i]->coord.x < panel_offset_x)
-									{
-										panel_next = i;
-										panel_offset_x = menu->panels[i]->coord.x;
-									}
-								}
-							}
-						}
+                        // Width of currently selected panel
+                        panel_width = getmaxx(menu->panels[sel_p]->window);
 
-						// If panel found
-						if(panel_next != -1 && menu->panels[panel_next]->num_items > 0)
-						{
-							menu->panels[sel_p]->selected = 0;
-							menu->panels[sel_p]->items[sel_b]->selected = 0;
-						
-							sel_p = panel_next;
-							sel_b = menu->panels[sel_p]->num_items - 1;
+                        // Get closest panel beneath currently selected panel
+                        for(int i = 0; i < menu->num_panels; ++i)
+                        {
+                            // Width of iteration panel
+                            panel_width_next = getmaxx(menu->panels[i]->window);
 
-							menu->panels[sel_p]->selected = 1;
-							menu->panels[sel_p]->items[sel_b]->selected = 1;
-						}
-					}
+                            // If panel is below selected panel and intersects current X bounds
+                            if(menu->panels[i]->coord.y < menu->panels[sel_p]->coord.y
+                            && menu->panels[i]->coord.x + panel_width_next - 1 >= menu->panels[sel_p]->coord.x
+                            && menu->panels[i]->coord.x <= menu->panels[sel_p]->coord.x + panel_width - 1)
+                            {
+                                // If panel is closer (Y axis) to selected panel
+                                offset_y = menu->panels[sel_p]->coord.y - menu->panels[i]->coord.y;
+                                if(offset_y < panel_offset_y || panel_offset_y == -1)
+                                {
+                                    panel_next = i;
+                                    panel_offset_y = offset_y;
+                                    panel_offset_x = menu->panels[i]->coord.x;
+                                    break;
+                                }
+                                // If panel is on the same Y axis
+                                // TODO: Test this
+                                else if(offset_y == panel_offset_y)
+                                {
+                                    // Select leftmost item. panel_offset_x will always be set at this point, because
+                                    // panel_offset_y must be set, which requires the previous condition to be met
+                                    // at least once
+                                    if(menu->panels[i]->coord.x < panel_offset_x)
+                                    {
+                                        panel_next = i;
+                                        panel_offset_x = menu->panels[i]->coord.x;
+                                    }
+                                }
+                            }
+                        }
+
+                        // If panel found
+                        if(panel_next != -1 && menu->panels[panel_next]->num_items > 0)
+                        {
+                            menu->panels[sel_p]->selected = 0;
+                            menu->panels[sel_p]->items[sel_b]->selected = 0;
+
+                            sel_p = panel_next;
+                            sel_b = menu->panels[sel_p]->num_items - 1;
+
+                            menu->panels[sel_p]->selected = 1;
+                            menu->panels[sel_p]->items[sel_b]->selected = 1;
+                        }
+                    }
                     break;
 
                 case 0x53: // 'S'
                 case 0x73: // 's'
                 case KEY_DOWN: // Down arrow
-					// If moving within panel
-					if(sel_b >= 0 && sel_b < menu->panels[sel_p]->num_items - 1)
-					{
-						menu->panels[sel_p]->items[sel_b]->selected = 0;
-						menu->panels[sel_p]->items[++sel_b]->selected = 1;
-					}
-					// Moving between panels
-					else
-					{
-						panel_next = -1;
-						panel_offset_y = -1;
-						panel_offset_x = -1;
-						offset_y = 0;
-						
-						// Width of currently selected panel
-						panel_width = getmaxx(menu->panels[sel_p]->window);
+                    // If moving within panel
+                    if(sel_b >= 0 && sel_b < menu->panels[sel_p]->num_items - 1)
+                    {
+                        menu->panels[sel_p]->items[sel_b]->selected = 0;
+                        menu->panels[sel_p]->items[++sel_b]->selected = 1;
+                    }
+                    // Moving between panels
+                    else
+                    {
+                        panel_next = -1;
+                        panel_offset_y = -1;
+                        panel_offset_x = -1;
+                        offset_y = 0;
 
-						// Get closest panel beneath currently selected panel
-						for(int i = 0; i < menu->num_panels; ++i)
-						{
-							// Width of iteration panel
-							panel_width_next = getmaxx(menu->panels[i]->window);
-							
-							// If panel is below selected panel and intersects current X bounds
-							if(menu->panels[i]->coord.y > menu->panels[sel_p]->coord.y
-							&& menu->panels[i]->coord.x + panel_width_next - 1 >= menu->panels[sel_p]->coord.x
-							&& menu->panels[i]->coord.x <= menu->panels[sel_p]->coord.x + panel_width - 1)
-							{								
-								// If panel is closer (Y axis) to selected panel
-								offset_y = menu->panels[i]->coord.y - menu->panels[sel_p]->coord.y;
-								if(offset_y < panel_offset_y || panel_offset_y == -1)
-								{
-									panel_next = i;
-									panel_offset_y = offset_y;
-									panel_offset_x = menu->panels[i]->coord.x;
-									break;
-								}
-								// If panel is on the same Y axis
-								else if(offset_y == panel_offset_y)
-								{
-									// Select leftmost item. panel_offset_x will always be set at this point, because
-									// panel_offset_y must be set, which requires the previous condition to be met
-									// at least once
-									if(menu->panels[i]->coord.x < panel_offset_x)
-									{
-										panel_next = i;
-										panel_offset_x = menu->panels[i]->coord.x;
-									}
-								}
-							}
-						}
+                        // Width of currently selected panel
+                        panel_width = getmaxx(menu->panels[sel_p]->window);
 
-						// If panel found
-						if(panel_next != -1 && menu->panels[panel_next]->num_items > 0)
-						{
-							menu->panels[sel_p]->selected = 0;
-							menu->panels[sel_p]->items[sel_b]->selected = 0;
-						
-							sel_p = panel_next;
-							sel_b = 0;
+                        // Get closest panel beneath currently selected panel
+                        for(int i = 0; i < menu->num_panels; ++i)
+                        {
+                            // Width of iteration panel
+                            panel_width_next = getmaxx(menu->panels[i]->window);
 
-							menu->panels[sel_p]->selected = 1;
-							menu->panels[sel_p]->items[sel_b]->selected = 1;
-						}
-					}
+                            // If panel is below selected panel and intersects current X bounds
+                            if(menu->panels[i]->coord.y > menu->panels[sel_p]->coord.y
+                            && menu->panels[i]->coord.x + panel_width_next - 1 >= menu->panels[sel_p]->coord.x
+                            && menu->panels[i]->coord.x <= menu->panels[sel_p]->coord.x + panel_width - 1)
+                            {
+                                // If panel is closer (Y axis) to selected panel
+                                offset_y = menu->panels[i]->coord.y - menu->panels[sel_p]->coord.y;
+                                if(offset_y < panel_offset_y || panel_offset_y == -1)
+                                {
+                                    panel_next = i;
+                                    panel_offset_y = offset_y;
+                                    panel_offset_x = menu->panels[i]->coord.x;
+                                    break;
+                                }
+                                // If panel is on the same Y axis
+                                else if(offset_y == panel_offset_y)
+                                {
+                                    // Select leftmost item. panel_offset_x will always be set at this point, because
+                                    // panel_offset_y must be set, which requires the previous condition to be met
+                                    // at least once
+                                    if(menu->panels[i]->coord.x < panel_offset_x)
+                                    {
+                                        panel_next = i;
+                                        panel_offset_x = menu->panels[i]->coord.x;
+                                    }
+                                }
+                            }
+                        }
+
+                        // If panel found
+                        if(panel_next != -1 && menu->panels[panel_next]->num_items > 0)
+                        {
+                            menu->panels[sel_p]->selected = 0;
+                            menu->panels[sel_p]->items[sel_b]->selected = 0;
+
+                            sel_p = panel_next;
+                            sel_b = 0;
+
+                            menu->panels[sel_p]->selected = 1;
+                            menu->panels[sel_p]->items[sel_b]->selected = 1;
+                        }
+                    }
                     break;
 
-				case 0x41: // 'A'
-				case 0x61: // 'a'
-				case KEY_LEFT: // Left arrow
-					panel_next = -1;
-					panel_offset_y = -1;
-					panel_offset_x = -1;
-					offset_y = 0;
-					offset_x = 0;
-				
-					// Get leftmost coordinate of panel
-					sel_x = menu->panels[sel_p]->coord.x;
+                case 0x41: // 'A'
+                case 0x61: // 'a'
+                case KEY_LEFT: // Left arrow
+                    panel_next = -1;
+                    panel_offset_y = -1;
+                    panel_offset_x = -1;
+                    offset_y = 0;
+                    offset_x = 0;
 
-					// Find closest intersecting upper left panel
-					for(int i = 0; i < menu->num_panels; ++i)
-					{
-						// If panel is to the left of the selected panel and intersects Y bounds
-						if(menu->panels[i]->coord.x < sel_x
-						&& menu->panels[i]->coord.y + menu->panels[i]->num_items >= menu->panels[sel_p]->coord.y
-						&& menu->panels[i]->coord.y <= menu->panels[sel_p]->coord.y + menu->panels[sel_p]->num_items)
-						{
-							// Prioritize panels closer on the x axis
-							offset_x = sel_x - menu->panels[i]->coord.x;
-							if(offset_x < panel_offset_x || panel_offset_x == -1)
-							{
-								panel_next = i;
-								panel_offset_x = offset_x;
-								panel_offset_y = menu->panels[i]->coord.y;
-							}
-							else if(offset_x == panel_offset_x)
-							{
-								// Select topmost panel
-								if(menu->panels[i]->coord.y < panel_offset_y)
-								{
-									panel_next = i;
-									panel_offset_y = menu->panels[i]->coord.y;
-								}
-							}
-						}
-					}
+                    // Get leftmost coordinate of panel
+                    sel_x = menu->panels[sel_p]->coord.x;
 
-					// If panel found
-					if(panel_next != -1 && menu->panels[panel_next]->num_items > 0)
-					{
-						menu->panels[sel_p]->selected = 0;
-						menu->panels[sel_p]->items[sel_b]->selected = 0;
-					
-						sel_p = panel_next;
+                    // Find closest intersecting upper left panel
+                    for(int i = 0; i < menu->num_panels; ++i)
+                    {
+                        // If panel is to the left of the selected panel and intersects Y bounds
+                        if(menu->panels[i]->coord.x < sel_x
+                        && menu->panels[i]->coord.y + menu->panels[i]->num_items >= menu->panels[sel_p]->coord.y
+                        && menu->panels[i]->coord.y <= menu->panels[sel_p]->coord.y + menu->panels[sel_p]->num_items)
+                        {
+                            // Prioritize panels closer on the x axis
+                            offset_x = sel_x - menu->panels[i]->coord.x;
+                            if(offset_x < panel_offset_x || panel_offset_x == -1)
+                            {
+                                panel_next = i;
+                                panel_offset_x = offset_x;
+                                panel_offset_y = menu->panels[i]->coord.y;
+                            }
+                            else if(offset_x == panel_offset_x)
+                            {
+                                // Select topmost panel
+                                if(menu->panels[i]->coord.y < panel_offset_y)
+                                {
+                                    panel_next = i;
+                                    panel_offset_y = menu->panels[i]->coord.y;
+                                }
+                            }
+                        }
+                    }
 
-						if(sel_b >= menu->panels[sel_p]->num_items)
-						{
-							sel_b = menu->panels[sel_p]->num_items - 1;
-						}
+                    // If panel found
+                    if(panel_next != -1 && menu->panels[panel_next]->num_items > 0)
+                    {
+                        menu->panels[sel_p]->selected = 0;
+                        menu->panels[sel_p]->items[sel_b]->selected = 0;
 
-						menu->panels[sel_p]->selected = 1;
-						menu->panels[sel_p]->items[sel_b]->selected = 1;
-					}
-					break;
+                        sel_p = panel_next;
 
-				case 0x44: // 'D'
-				case 0x64: // 'd'
-				case KEY_RIGHT: // Right arrow
-					panel_next = -1;
-					panel_offset_y = -1;
-					panel_offset_x = -1;
-					offset_y = 0;
-					offset_x = 0;
-				
-					// Get rightmost coordinate of panel
-					sel_x = getmaxx(menu->panels[sel_p]->window) + menu->panels[sel_p]->coord.x - 1;
+                        if(sel_b >= menu->panels[sel_p]->num_items)
+                        {
+                            sel_b = menu->panels[sel_p]->num_items - 1;
+                        }
 
-					// Find closest intersecting upper right panel
-					for(int i = 0; i < menu->num_panels; ++i)
-					{
-						// If panel is to the right of the selected panel and intersects Y bounds
-						if(menu->panels[i]->coord.x > sel_x
-						&& menu->panels[i]->coord.y + menu->panels[i]->num_items >= menu->panels[sel_p]->coord.y
-						&& menu->panels[i]->coord.y <= menu->panels[sel_p]->coord.y + menu->panels[sel_p]->num_items)
-						{
-							// Prioritize panels closer on the x axis
-							offset_x = menu->panels[i]->coord.x - sel_x;
-							if(offset_x < panel_offset_x || panel_offset_x == -1)
-							{
-								panel_next = i;
-								panel_offset_x = offset_x;
-							}
-							else if(offset_x == panel_offset_x)
-							{
-								// Select topmost panel
-								if(menu->panels[i]->coord.y < panel_offset_y)
-								{
-									panel_next = i;
-									panel_offset_y = menu->panels[i]->coord.y;
-								}
-							}
-						}
-					}
+                        menu->panels[sel_p]->selected = 1;
+                        menu->panels[sel_p]->items[sel_b]->selected = 1;
+                    }
+                    break;
 
-					// If panel found
-					if(panel_next != -1 && menu->panels[panel_next]->num_items > 0)
-					{
-						menu->panels[sel_p]->selected = 0;
-						menu->panels[sel_p]->items[sel_b]->selected = 0;
-					
-						sel_p = panel_next;
+                case 0x44: // 'D'
+                case 0x64: // 'd'
+                case KEY_RIGHT: // Right arrow
+                    panel_next = -1;
+                    panel_offset_y = -1;
+                    panel_offset_x = -1;
+                    offset_y = 0;
+                    offset_x = 0;
 
-						if(sel_b >= menu->panels[sel_p]->num_items)
-						{
-							sel_b = menu->panels[sel_p]->num_items - 1;
-						}
+                    // Get rightmost coordinate of panel
+                    sel_x = getmaxx(menu->panels[sel_p]->window) + menu->panels[sel_p]->coord.x - 1;
 
-						menu->panels[sel_p]->selected = 1;
-						menu->panels[sel_p]->items[sel_b]->selected = 1;
-					}
+                    // Find closest intersecting upper right panel
+                    for(int i = 0; i < menu->num_panels; ++i)
+                    {
+                        // If panel is to the right of the selected panel and intersects Y bounds
+                        if(menu->panels[i]->coord.x > sel_x
+                        && menu->panels[i]->coord.y + menu->panels[i]->num_items >= menu->panels[sel_p]->coord.y
+                        && menu->panels[i]->coord.y <= menu->panels[sel_p]->coord.y + menu->panels[sel_p]->num_items)
+                        {
+                            // Prioritize panels closer on the x axis
+                            offset_x = menu->panels[i]->coord.x - sel_x;
+                            if(offset_x < panel_offset_x || panel_offset_x == -1)
+                            {
+                                panel_next = i;
+                                panel_offset_x = offset_x;
+                            }
+                            else if(offset_x == panel_offset_x)
+                            {
+                                // Select topmost panel
+                                if(menu->panels[i]->coord.y < panel_offset_y)
+                                {
+                                    panel_next = i;
+                                    panel_offset_y = menu->panels[i]->coord.y;
+                                }
+                            }
+                        }
+                    }
 
-					// TODO?: If no panels intersect Y bounds, select closest X axis, closest upper Y axis panel
-					break;
+                    // If panel found
+                    if(panel_next != -1 && menu->panels[panel_next]->num_items > 0)
+                    {
+                        menu->panels[sel_p]->selected = 0;
+                        menu->panels[sel_p]->items[sel_b]->selected = 0;
 
-				case 0x45: // 'E'
+                        sel_p = panel_next;
+
+                        if(sel_b >= menu->panels[sel_p]->num_items)
+                        {
+                            sel_b = menu->panels[sel_p]->num_items - 1;
+                        }
+
+                        menu->panels[sel_p]->selected = 1;
+                        menu->panels[sel_p]->items[sel_b]->selected = 1;
+                    }
+
+                    // TODO?: If no panels intersect Y bounds, select closest X axis, closest upper Y axis panel
+                    break;
+
+                case 0x45: // 'E'
                 case 0x65: // 'e'
                 case 0x0A: // Newline (enter)
                 case 0x20: // Spacebar
@@ -561,9 +561,9 @@ int operate_menu(menu_t * menu)
                 case 0x71: // 'q'
                 case 0x1B: // Escape
                 case KEY_BACKSPACE: // Backspace
-					quit = UI_BACK;
-					break;
-					
+                    quit = UI_BACK;
+                    break;
+
                 default:;
             }
 
@@ -583,12 +583,12 @@ int operate_menu(menu_t * menu)
 
             for (int i = 0; i < menu->num_panels; ++i)
             {
-				panel_width = getmaxx(menu->panels[i]->window);
-				if(menu->panels[i]->coord.y + menu->panels[i]->num_items < max_y - 1
-				&& menu->panels[i]->coord.x + panel_width - 1 < max_x - 1)
-				{
-					draw_panel(menu->panels[i]);
-				}
+                panel_width = getmaxx(menu->panels[i]->window);
+                if(menu->panels[i]->coord.y + menu->panels[i]->num_items < max_y - 1
+                && menu->panels[i]->coord.x + panel_width - 1 < max_x - 1)
+                {
+                    draw_panel(menu->panels[i]);
+                }
             }
 
         } while (!quit && (key = wgetch(menu->window)) != 3); // 3 is CTRL+C'
@@ -599,15 +599,15 @@ int operate_menu(menu_t * menu)
         }
         else
         {
-			quit = UI_SUCCESS;
-		}
+            quit = UI_SUCCESS;
+        }
     }
     else
     {
-		quit = UI_INVALID;
-	}
+        quit = UI_INVALID;
+    }
 
-	return quit;
+    return quit;
 }
 
 int get_panel_height(panel_t * panel)
@@ -625,30 +625,30 @@ int get_panel_height(panel_t * panel)
 
 void curses_init()
 {
-	initscr();
-	start_color();
+    initscr();
+    start_color();
 
-	raw();
-	noecho();
-	curs_set(0);
-	keypad(stdscr, TRUE);
+    raw();
+    noecho();
+    curs_set(0);
+    keypad(stdscr, TRUE);
 
-	init_pair(1, COLOR_WHITE, COLOR_BLACK);
-	init_pair(2, COLOR_BLACK, COLOR_WHITE);
+    init_pair(1, COLOR_WHITE, COLOR_BLACK);
+    init_pair(2, COLOR_BLACK, COLOR_WHITE);
 
-	// Debug color pair
-	init_pair(3, COLOR_WHITE, COLOR_GREEN);
+    // Debug color pair
+    init_pair(3, COLOR_WHITE, COLOR_GREEN);
 
-	// Start using defined color
-	//attron(COLOR_PAIR(1));
+    // Start using defined color
+    //attron(COLOR_PAIR(1));
 
-	// Enable bright text
-	//attron(A_BOLD);
+    // Enable bright text
+    //attron(A_BOLD);
 }
 
 void curses_term()
 {
-	clear();
-	refresh();
-	endwin();
+    clear();
+    refresh();
+    endwin();
 }

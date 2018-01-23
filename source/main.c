@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "reactant_server.h"
+#include "reactant_network.h"
 #include "reactant_util.h"
-#include "ui.h"
+#include "reactant_ui.h"
 
 #include <curses.h>
 
@@ -15,133 +15,133 @@ int test_callback(WINDOW * window);
 
 int main()
 {
-	queue_t q;
-	
-	int items[10];
-	int rval = 0;
+    queue_t q;
 
-	debug_control(ENABLE);
+    int items[10];
+    int rval = 0;
 
-	queue_construct(&q, 10);
+    debug_control(ENABLE);
 
-	for(int i = 0; i < q.capacity; ++i)
-	{
-		items[i] = i;
-		queue_check(enqueue(&q, &items[i]));
-	}
+    queue_construct(&q, 10);
 
-	printf("Capacity: %d, Size: %d\n", q.capacity, q.size); 
+    for(int i = 0; i < q.capacity; ++i)
+    {
+        items[i] = i;
+        queue_check(enqueue(&q, &items[i]));
+    }
 
-	printf("test\n");
-	queue_check(enqueue(&q, &items[0]));
+    printf("Capacity: %d, Size: %d\n", q.capacity, q.size);
 
-	for(int i = 0; i < 5; ++i)
-	{
-		queue_check(dequeue(&q, &rval));
-		printf("%d\n", rval);
-	}
+    printf("test\n");
+    queue_check(enqueue(&q, &items[0]));
 
-	for(int i = 0; i < 5; ++i)
-	{
-		queue_check(enqueue_blocking(&q, &items[7]));
-	}
+    for(int i = 0; i < 5; ++i)
+    {
+        queue_check(dequeue(&q, &rval));
+        printf("%d\n", rval);
+    }
 
-	for(int i = 0; i < q.capacity; ++i)
-	{
-		queue_check(dequeue_blocking(&q, &rval));
-		printf("%d\n", rval);
-	}
+    for(int i = 0; i < 5; ++i)
+    {
+        queue_check(enqueue_blocking(&q, &items[7]));
+    }
 
-	printf("test\n");
+    for(int i = 0; i < q.capacity; ++i)
+    {
+        queue_check(dequeue_blocking(&q, &rval));
+        printf("%d\n", rval);
+    }
 
-	queue_check(dequeue(&q, &rval));
-	printf("%d\n", rval);
-	
-	queue_destruct(&q);
+    printf("test\n");
 
-	ui_test();
+    queue_check(dequeue(&q, &rval));
+    printf("%d\n", rval);
 
-	return 0;
+    queue_destruct(&q);
+
+    ui_test();
+
+    return 0;
 }
 
 void ui_test()
 {
-	/*##############
-	# Run Reactant #
-	##############*/
-	curses_init();
+    /*##############
+    # Run Reactant #
+    ##############*/
+    curses_init();
 
-	// Menu items
-	panel_t * panels[4];
+    // Menu items
+    panel_t * panels[4];
 
-	panels[0] = create_panel("Operation", 2, 3); // 2, 3
-	add_panel_button(panels[0], create_button("Start Reactant Core server", test_callback));
-	add_panel_button(panels[0], create_button("Configure", configure_callback));
-	add_panel_button(panels[0], create_button("Exit", NULL));
+    panels[0] = create_panel("Operation", 2, 3); // 2, 3
+    add_panel_button(panels[0], create_button("Start Reactant Core server", test_callback));
+    add_panel_button(panels[0], create_button("Configure", configure_callback));
+    add_panel_button(panels[0], create_button("Exit", NULL));
 
-	panels[1] = create_panel("Other", 2, 40);
-	add_panel_button(panels[1], create_button("About", test_callback));
-	add_panel_button(panels[1], create_button("Test Reactant Node device", test_callback));
+    panels[1] = create_panel("Other", 2, 40);
+    add_panel_button(panels[1], create_button("About", test_callback));
+    add_panel_button(panels[1], create_button("Test Reactant Node device", test_callback));
 
-	panels[2] = create_panel("TESTPANEL1", 7, 3);
-	add_panel_button(panels[2], create_button("TESTBUTTON1", test_callback));
-	add_panel_button(panels[2], create_button("TESTBUTTON2", test_callback));
-	add_panel_button(panels[2], create_button("TESTBUTTON3", test_callback));
+    panels[2] = create_panel("TESTPANEL1", 7, 3);
+    add_panel_button(panels[2], create_button("TESTBUTTON1", test_callback));
+    add_panel_button(panels[2], create_button("TESTBUTTON2", test_callback));
+    add_panel_button(panels[2], create_button("TESTBUTTON3", test_callback));
 
-	panels[3] = create_panel("TESTPANEL2", 7, 40);
-	add_panel_button(panels[3], create_button("TESTBUTTON4", test_callback));
-	add_panel_button(panels[3], create_button("TESTBUTTON5", test_callback));
-	add_panel_button(panels[3], create_button("TESTBUTTON6", test_callback));
+    panels[3] = create_panel("TESTPANEL2", 7, 40);
+    add_panel_button(panels[3], create_button("TESTBUTTON4", test_callback));
+    add_panel_button(panels[3], create_button("TESTBUTTON5", test_callback));
+    add_panel_button(panels[3], create_button("TESTBUTTON6", test_callback));
 
-	panels[0]->selected = 1;
-	panels[0]->items[0]->selected = 1;
+    panels[0]->selected = 1;
+    panels[0]->items[0]->selected = 1;
 
-	menu_t * menu = create_menu("Reactant Primary Control");
-	add_menu_panel(menu, panels[0]);
-	add_menu_panel(menu, panels[1]);
-	add_menu_panel(menu, panels[2]);
-	add_menu_panel(menu, panels[3]);
+    menu_t * menu = create_menu("Reactant Primary Control");
+    add_menu_panel(menu, panels[0]);
+    add_menu_panel(menu, panels[1]);
+    add_menu_panel(menu, panels[2]);
+    add_menu_panel(menu, panels[3]);
 
-	operate_menu(menu);
+    operate_menu(menu);
 
-	//    int status = start_server(10801);
-	//    if (status > 0)
-	//    {
-	//        printw("Failed to establish server!\n");
-	//        return 1;
-	//    }
+    //    int status = start_server(10801);
+    //    if (status > 0)
+    //    {
+    //        printw("Failed to establish server!\n");
+    //        return 1;
+    //    }
 
-	free_menu(menu);
-	curses_term();
+    free_menu(menu);
+    curses_term();
 }
 
 int configure_callback(WINDOW * PH(window))
 {
-	int rval = 0;
+    int rval = 0;
 
-	panel_t * panel = create_panel("Operation", 2, 3);
-	add_panel_button(panel, create_button("Back", NULL));
+    panel_t * panel = create_panel("Operation", 2, 3);
+    add_panel_button(panel, create_button("Back", NULL));
 
-	menu_t * menu = create_menu("Reactant Configuration");
-	add_menu_panel(menu, panel);
+    menu_t * menu = create_menu("Reactant Configuration");
+    add_menu_panel(menu, panel);
 
-	rval = operate_menu(menu);
+    rval = operate_menu(menu);
 
-	free_menu(menu);
+    free_menu(menu);
 
-	if (rval == UI_QUIT)
-	{
-		return UI_QUIT;
-	}
+    if (rval == UI_QUIT)
+    {
+        return UI_QUIT;
+    }
 
-	return rval;
+    return rval;
 }
 
 int test_callback(WINDOW * window)
 {
-	int y, x;
-	getmaxyx(stdscr, y, x);
-	mvwprintw(window, y / 2, x / 2 - 7, "This is a test!");
+    int y, x;
+    getmaxyx(stdscr, y, x);
+    mvwprintw(window, y / 2, x / 2 - 7, "This is a test!");
 
-	return 0;
+    return 0;
 }

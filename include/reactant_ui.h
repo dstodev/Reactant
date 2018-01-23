@@ -1,5 +1,5 @@
-#ifndef UI_H
-#define UI_H
+#ifndef REACTANT_UI_H
+#define REACTANT_UI_H
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -72,4 +72,4 @@ int get_panel_height(panel_t * panel);
 void curses_init();
 void curses_term();
 
-#endif // UI_H
+#endif
