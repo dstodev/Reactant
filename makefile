@@ -7,12 +7,12 @@ DIRS = ./source
 # Which libraries are linked
 LIBS = pthread curses
 # Dynamic libraries
-DLIBS = 
+DLIBS =
 
 # The next blocks change some variables depending on the build type
 ifeq ($(TYPE),debug)
 	LDPARAM =
-	CCPARAM = -Wall -g -std=c11
+	CCPARAM = -Wall -g -std=gnu11
 	MACROS =
 endif
 ifeq ($(TYPE),release)

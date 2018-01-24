@@ -72,4 +72,4 @@ int get_panel_height(panel_t * panel);
 void curses_init();
 void curses_term();
 
-#endif
+#endif // REACTANT_UI_H

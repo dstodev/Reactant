@@ -9,57 +9,16 @@
 #include <curses.h>
 
 void ui_test();
+void queue_test();
 
 int configure_callback(WINDOW * PH(window));
 int test_callback(WINDOW * window);
 
 int main()
 {
-    queue_t q;
+    start_discovery_server(10112);
 
-    int items[10];
-    int rval = 0;
 
-    debug_control(ENABLE);
-
-    queue_construct(&q, 10);
-
-    for(int i = 0; i < q.capacity; ++i)
-    {
-        items[i] = i;
-        queue_check(enqueue(&q, &items[i]));
-    }
-
-    printf("Capacity: %d, Size: %d\n", q.capacity, q.size);
-
-    printf("test\n");
-    queue_check(enqueue(&q, &items[0]));
-
-    for(int i = 0; i < 5; ++i)
-    {
-        queue_check(dequeue(&q, &rval));
-        printf("%d\n", rval);
-    }
-
-    for(int i = 0; i < 5; ++i)
-    {
-        queue_check(enqueue_blocking(&q, &items[7]));
-    }
-
-    for(int i = 0; i < q.capacity; ++i)
-    {
-        queue_check(dequeue_blocking(&q, &rval));
-        printf("%d\n", rval);
-    }
-
-    printf("test\n");
-
-    queue_check(dequeue(&q, &rval));
-    printf("%d\n", rval);
-
-    queue_destruct(&q);
-
-    ui_test();
 
     return 0;
 }
@@ -113,6 +72,53 @@ void ui_test()
 
     free_menu(menu);
     curses_term();
+}
+
+void queue_test()
+{
+    queue_t q;
+
+    int items[10];
+    int rval = 0;
+
+    debug_control(ENABLE);
+
+    queue_construct(&q, 10);
+
+    for(int i = 0; i < q.capacity; ++i)
+    {
+        items[i] = i;
+        queue_check(enqueue(&q, &items[i]));
+    }
+
+    printf("Capacity: %d, Size: %d\n", q.capacity, q.size);
+
+    printf("test\n");
+    queue_check(enqueue(&q, &items[0]));
+
+    for(int i = 0; i < 5; ++i)
+    {
+        queue_check(dequeue(&q, &rval));
+        printf("%d\n", rval);
+    }
+
+    for(int i = 0; i < 5; ++i)
+    {
+        queue_check(enqueue_blocking(&q, &items[7]));
+    }
+
+    for(int i = 0; i < q.capacity; ++i)
+    {
+        queue_check(dequeue_blocking(&q, &rval));
+        printf("%d\n", rval);
+    }
+
+    printf("test\n");
+
+    queue_check(dequeue(&q, &rval));
+    printf("%d\n", rval);
+
+    queue_destruct(&q);
 }
 
 int configure_callback(WINDOW * PH(window))
