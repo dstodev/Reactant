@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <bcm2835.h>
 
 #include "reactant_network.h"
 #include "reactant_util.h"
@@ -8,6 +9,7 @@
 
 #include <curses.h>
 
+void spi_test();
 void ui_test();
 void queue_test();
 
@@ -16,11 +18,55 @@ int test_callback(WINDOW * window);
 
 int main()
 {
-    start_discovery_server(10112);
+    if (!bcm2835_init())
+    {
+        fprintf(stderr, "bcm2835_init() failed. Try running as root user!\n");
+        return 1;
+    }
+
+    if (!bcm2835_spi_begin())
+    {
+        fprintf(stderr, "bcm2835_spi_begin() failed. Try running as root user!\n");
+        return 1;
+    }
+
+    bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);
+    bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);
+    bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_65536);
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS0);
+    bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);
+
+    char data[3];
+    int rval;
+
+    while(rval < 950)
+    {
+        data[0] = 0x01;
+        data[1] = 0x80;
+        data[2] = 0x00;
+
+        bcm2835_spi_transfern(data, 3);
+
+        rval = (data[1] & 0x03) << 0x08;
+        rval |= data[2];
+
+        fprintf(stderr, "Ch 1: %d\n", rval);
+
+        bcm2835_delay(100);
+    }
 
 
+    // start_discovery_server(10112);
+
+    bcm2835_spi_end();
+    bcm2835_close();
 
     return 0;
+}
+
+void spi_test()
+{
+
 }
 
 void ui_test()

@@ -5,7 +5,7 @@ TYPE = debug
 # Which directories contain source files
 DIRS = ./source
 # Which libraries are linked
-LIBS = pthread curses
+LIBS = pthread curses bcm2835
 # Dynamic libraries
 DLIBS =
 
