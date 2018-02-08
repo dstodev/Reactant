@@ -10,6 +10,9 @@
 #include <unistd.h>
 #include <ifaddrs.h>
 
+#include "reactant_util.h"
+
+
 #define S_MUL 1000000
 
 extern const int LISTEN_QUEUE;

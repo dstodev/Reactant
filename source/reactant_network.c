@@ -91,7 +91,28 @@ int start_discovery_server(int port)
 
 int discover_server(int port)
 {
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    int bytes = 0;
+    char message[BUFFER_DEPTH];
 
+    struct sockaddr_in client_addr;
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_port = htons((uint16_t) port);
+    client_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    if (bind(sock, (struct sockaddr *) &client_addr, sizeof(client_addr)) < 0)
+    {
+        fprintf(stderr, "Could not bind to %d:%d!\n", ntohl(client_addr.sin_addr.s_addr), ntohs(port));
+        return 1;
+    }
+
+    while ((bytes = read(sock, message, BUFFER_DEPTH)) > 0)
+    {
+        message[bytes] = 0;
+        fprintf(stderr, "%s\n", message);
+    }
+
+    return 0;
 }
 
 int start_core_server(int port)
@@ -109,7 +130,7 @@ int start_core_server(int port)
     // Bind server socket to the given port
     if (bind(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
     {
-        fprintf(stderr, "Could not bind to %d:%d!\n", server_addr.sin_addr.s_addr, port);
+        fprintf(stderr, "Could not bind to %d:%d!\n", ntohl(server_addr.sin_addr.s_addr), ntohs(port));
         return 1;
     }
 

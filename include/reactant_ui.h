@@ -6,6 +6,7 @@
 #include <curses.h>
 #include <string.h>
 
+
 typedef struct _coordinate_t
 {
     int y;

@@ -9,6 +9,7 @@
 
 #include <curses.h>
 
+
 void spi_test();
 void ui_test();
 void queue_test();
@@ -18,33 +19,35 @@ int test_callback(WINDOW * window);
 
 int main()
 {
-	// start_discovery_server(10112);
+    start_discovery_server(10112);
 
-	spi_test();
+    //spi_test();
 
     return 0;
 }
 
 void spi_test()
 {
-	peripheral_init();
-	peripheral_spi_init();
+    peripheral_init();
+    peripheral_spi_init();
 
-	int rval = 0;
+    int rval = 0;
+    float temperature = 0;
 
-	rval = mcp3008_read_channel(1);
-	return;
-
-	while(rval < 950)
+    while(rval < 950)
     {
+        temperature = mcp3008_read_channel(1);
 
-		fprintf(stderr, "Ch %d: %d\n", 1, rval);
-		
-		bcm2835_delay(100);
-	}
+        fprintf(stderr, "Ch %d: %d \tCh %d: %d\n", 1, rval = mcp3008_read_channel(0), 2, (int) temperature);
 
-	peripheral_spi_term();
-	peripheral_term();
+        temperature *= (500.0/1024.0);
+        fprintf(stderr, "Temperature: %f\n\n", temperature);
+
+        bcm2835_delay(100);
+    }
+
+    peripheral_spi_term();
+    peripheral_term();
 }
 
 void ui_test()
