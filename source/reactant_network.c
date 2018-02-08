@@ -65,7 +65,6 @@ int start_discovery_server(int port)
     delay.tv_nsec = 0;
 
     int broadcast_permission = 1;
-
     if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast_permission, sizeof(broadcast_permission)) < 0)
     {
         fprintf(stderr, "Could not set socket options!\n");
@@ -95,10 +94,21 @@ int discover_server(int port)
     int bytes = 0;
     char message[BUFFER_DEPTH];
 
-    struct sockaddr_in client_addr;
+    struct sockaddr_in client_addr, server_address;
     client_addr.sin_family = AF_INET;
     client_addr.sin_port = htons((uint16_t) port);
     client_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    memset(client_addr.sin_zero, 0, sizeof(client_addr.sin_zero));
+
+    socklen_t address_length = sizeof(server_address);
+
+    int broadcast_permission = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast_permission, sizeof(broadcast_permission)) < 0)
+    {
+        fprintf(stderr, "Could not set socket options!\n");
+        close(sock);
+        return 1;
+    }
 
     if (bind(sock, (struct sockaddr *) &client_addr, sizeof(client_addr)) < 0)
     {
@@ -106,11 +116,13 @@ int discover_server(int port)
         return 1;
     }
 
-    while ((bytes = read(sock, message, BUFFER_DEPTH)) > 0)
+    while ((bytes = recvfrom(sock, message, BUFFER_DEPTH, 0, (struct sockaddr *) &server_address, &address_length)) > 0)
     {
-        message[bytes] = 0;
+        message[bytes] = '\0';
         fprintf(stderr, "%s\n", message);
     }
+
+    close(sock);
 
     return 0;
 }

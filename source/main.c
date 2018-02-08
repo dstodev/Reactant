@@ -19,7 +19,8 @@ int test_callback(WINDOW * window);
 
 int main()
 {
-    start_discovery_server(10112);
+    //start_discovery_server(10112);
+    discover_server(10112);
 
     //spi_test();
 
