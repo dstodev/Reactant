@@ -8,6 +8,7 @@
 #include "reactant_ui.h"
 
 #include <curses.h>
+#include <linux/i2c-dev.h>
 
 
 char reverse_byte(char byte);
@@ -78,43 +79,43 @@ void spi_test()
 
 void i2c_test()
 {
-    char on[2] = { 0 };
-    on[0] = TSL2561_CONTROL;
-    on[1] = 0x03;
-
-    char id = TSL2561_ID; // 0x8A
+    //char on[2] = { TSL2561_CONTROL, 0x03 };
+    //char id = TSL2561_ID; // 0x8A
 
     char rval = 0;
 
-    //memset(rval, 0, sizeof(rval));
-
-    if(!peripheral_init())
+    char * device = "/dev/i2c-1";
+    int file;
+    if ((file = open(device, O_RDWR)) < 0)
     {
-        peripheral_i2c_init();
-
-        bcm2835_i2c_setSlaveAddress(0x39); // TSL2561 Address (when ADDR pin is floating)
-        bcm2835_i2c_set_baudrate(100000); // 400 kHz
-
-        bcm2835_i2c_write(on, 2);
-
-        char test = TSL2561_COMMAND;
-        bcm2835_i2c_write(&test, 1);
-        bcm2835_i2c_read(&rval, 1);
-
-        fprintf(stderr, "Control register: 0x%x\n", rval);
-
-        bcm2835_i2c_write(&id, 1);
-        bcm2835_i2c_read(&rval, 1);
-
-        fprintf(stderr, "ID register: 0x%x\n", rval);
-
-        peripheral_i2c_term();
-        peripheral_term();
+        fprintf(stderr, "%s\n", "i2c_test() failed to open I2C device");
+        return;
     }
-    else
+
+    if (ioctl(file, I2C_SLAVE, 0x39) < 0)
     {
-        fprintf(stderr, "%s\n", "Could not initialize I2C peripherals!");
+        fprintf(stderr, "%s\n", "i2c_test() failed to set I2C slave");
+        close(file);
+        return;
     }
+
+    if(i2c_smbus_write_byte_data(file, TSL2561_CONTROL, 0x03) < 0)
+    {
+        fprintf(stderr, "%s\n", "i2c_test() failed to transmit ENABLE");
+        close(file);
+        return;
+    }
+
+    if((rval = i2c_smbus_read_byte_data(file, TSL2561_ID)) < 0)
+    {
+        fprintf(stderr, "%s\n", "i2c_test() failed to receive ID");
+        close(file);
+        return;
+    }
+
+    fprintf(stderr, "Returned: 0x%x\n", rval);
+
+    close(file);
 }
 
 void ui_test()

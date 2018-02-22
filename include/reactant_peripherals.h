@@ -7,6 +7,9 @@
 #include <stdio.h>
 
 #include <bcm2835.h>
+#include <linux/i2c-dev.h>
+#include <fcntl.h>
+
 
 /*******************************************************************************
  *  Category:   General

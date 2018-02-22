@@ -44,19 +44,11 @@ int peripheral_spi_term()
 
 int peripheral_i2c_init()
 {
-    if (!bcm2835_i2c_begin())
-    {
-        fprintf(stderr, "bcm2835_i2c_begin() failed. Try running as root user!\n");
-        return 1;
-    }
-
     return 0;
 }
 
 int peripheral_i2c_term()
 {
-    bcm2835_i2c_end();
-
     return 0;
 }
 
