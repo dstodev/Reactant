@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Author:	Daniel J. Stotts
+ * Author:  Daniel J. Stotts
  * Purpose: Includes multiple utilities for use with the Reactant project
  * Revision Date: 1/9/2018
  ******************************************************************************/
@@ -18,50 +18,50 @@
 
 
 /*******************************************************************************
- *	Category:	General
- *	Description:	Defines various elements used by other categories
+ *  Category:   General
+ *  Description:    Defines elements used by other categories
  ******************************************************************************/
 // Constant definitions
-#define BUFFER_DEPTH (256)	// Buffer depth
+#define BUFFER_DEPTH (256)  // Buffer depth
 
 // Macro definitions
-#define PH(para) Placeholder_ ## para __attribute__((unused))	// Set a parameter as a placeholder, i.e. unused
-																// Use to match function signatures without warnings
+#define PH(para) Placeholder_ ## para __attribute__((unused))   // Set a parameter as a placeholder, i.e. unused
+                                                                // Use to match function signatures without warnings
 // Control enum
 typedef enum _control_t
 {
-	DISABLE = 0,
-	ENABLE,
-	
+    DISABLE = 0,
+    ENABLE,
+
 } control_t;
 
 // Status
 extern char * _general_status_message[];
 typedef enum _status_t
 {
-	UNKNOWN = -1,	// No known status
-	SUCCESS,	// No error
-	ARGUMENT,	// Invalid argument
+    UNKNOWN = -1,   // No known status
+    SUCCESS,    // No error
+    ARGUMENT,   // Invalid argument
 
-	_EI,	// (Extension Index) Final element of general status codes
-	
+    _EI,    // (Extension Index) Final element of general status codes
+
 } status_t;
 
 
 /*******************************************************************************
- *	Category:	Error checking
- *	Description:	Allows function return status to be easily inspected
+ *  Category:   Error checking
+ *  Description:    Allows function return status to be easily inspected
  ******************************************************************************/
 // Error check function
 void _error_check(int, int, char *[]);
 
 // Macro to insert line number into _error_check call
-#define error_check(index, message) _error_check(__LINE__, index, message)	// Print status of function call
+#define error_check(index, message) _error_check(__LINE__, index, message)  // Print status of function call
 
 
 /*******************************************************************************
-*	Category:	Debug utilities
-*	Description:	Aids in the debugging of a program
+*   Category:   Debug utilities
+*   Description:    Aids in the debugging of a program
 *******************************************************************************/
 // Debug functions
 void debug_control(control_t);
@@ -69,30 +69,30 @@ void debug_output(const char *, ...);
 
 
 /*******************************************************************************
- *	Category:	Hash table
- *	Description:	Implements a simple, generic hash table "class"
+ *  Category:   Hash table
+ *  Description:    Implements a simple, generic hash table "class"
  ******************************************************************************/
 // Hash table data type
 typedef struct _hash_data_t
 {
-	void * key;
-	void * value;
+    void * key;
+    void * value;
 
-	struct _hash_data_t * _next;
+    struct _hash_data_t * _next;
 
 } hash_data_t;
 
 // Hash table object type
 typedef struct _hash_table_t
 {
-	uint32_t (*_hash)(void *);
-	uint8_t (*_compare)(void *, void *);
+    uint32_t (*_hash)(void *);
+    uint8_t (*_compare)(void *, void *);
 
-	uint32_t size;
+    uint32_t size;
 
-	uint32_t _key_size;
-	uint32_t _value_size;
-	hash_data_t ** _array;
+    uint32_t _key_size;
+    uint32_t _value_size;
+    hash_data_t ** _array;
 
 } hash_table_t;
 
@@ -101,9 +101,9 @@ extern char * _ht_status_message[];
 #define ht_check(function) error_check(function, _ht_status_message)
 
 typedef enum _ht_status_t
-{	
-	HT_DNE = _EI,	// Key does not exist
-	HT_DUPLICATE,	// Key already exists in hash table
+{
+    HT_DNE = _EI,   // Key does not exist
+    HT_DUPLICATE,   // Key already exists in hash table
 
 } ht_status_t;
 
@@ -118,28 +118,28 @@ int ht_traverse(hash_table_t *, void (*)(void *, void *));
 
 
 /*******************************************************************************
- *	Category:	Registry queue
- *	Description:	Implements a simple queue. Intended for use with storing
- * 					pointers in a FIFO arrangement. It does not allocate memory
- * 					for an inserted element, but rather will store the pointer
- * 					to that element.
+ *  Category:   Registry queue
+ *  Description:    Implements a simple queue. Intended for use with storing
+ *                  pointers in a FIFO arrangement. It does not allocate memory
+ *                  for an inserted element, but rather will store the pointer
+ *                  to that element.
  ******************************************************************************/
 // Queue object type
 typedef struct _queue_t
 {
-    void ** queue;		// Array of items
-    size_t capacity;	// Maximum size of the queue
-    size_t size;		// Amount of items stored in the queue
-    
-    size_t head;	// Head item index
-    size_t tail;	// Tail item index
-    
-    sem_t * enqueue_semaphore;	// Semaphore used to enable blocking enqueue
-    sem_t * dequeue_semaphore;	// Semaphore used to enable blocking dequeue
-    pthread_mutex_t * enqueue_mutex;	// Mutex used to enable threadsafe enqueue
-    pthread_mutex_t * dequeue_mutex;	// Mutex used to enable threadsafe dequeue
-    pthread_mutex_t * enqueue_blocking_mutex;	// Mutex used to enable threadsafe blocking enqueue
-    pthread_mutex_t * dequeue_blocking_mutex;	// Mutex used to enable threadsafe blocking dequeue
+    void ** queue;      // Array of items
+    size_t capacity;    // Maximum size of the queue
+    size_t size;        // Amount of items stored in the queue
+
+    size_t head;    // Head item index
+    size_t tail;    // Tail item index
+
+    sem_t * enqueue_semaphore;  // Semaphore used to enable blocking enqueue
+    sem_t * dequeue_semaphore;  // Semaphore used to enable blocking dequeue
+    pthread_mutex_t * enqueue_mutex;    // Mutex used to enable threadsafe enqueue
+    pthread_mutex_t * dequeue_mutex;    // Mutex used to enable threadsafe dequeue
+    pthread_mutex_t * enqueue_blocking_mutex;   // Mutex used to enable threadsafe blocking enqueue
+    pthread_mutex_t * dequeue_blocking_mutex;   // Mutex used to enable threadsafe blocking dequeue
 
 } queue_t;
 
@@ -149,10 +149,10 @@ extern char * _queue_status_message[];
 
 typedef enum _queue_status_t
 {
-	QUEUE_FULL = _EI,	// Queue is full, cannot enqueue item
-	QUEUE_EMPTY,		// Queue is empty, cannot dequeue item
-	QUEUE_LOCK, 		// Mutex is locked, cannot operate
-	
+    QUEUE_FULL = _EI,   // Queue is full, cannot enqueue item
+    QUEUE_EMPTY,        // Queue is empty, cannot dequeue item
+    QUEUE_LOCK,         // Mutex is locked, cannot operate
+
 } queue_status_t;
 
 // Queue functions

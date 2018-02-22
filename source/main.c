@@ -10,45 +10,111 @@
 #include <curses.h>
 
 
+char reverse_byte(char byte);
+
 void spi_test();
+void i2c_test();
 void ui_test();
 void queue_test();
 
 int configure_callback(WINDOW * PH(window));
 int test_callback(WINDOW * window);
 
+
 int main()
 {
     //start_discovery_server(10112);
     //discover_server(10112);
 
-    spi_test();
+    //spi_test();
+    i2c_test();
 
     return 0;
 }
 
-void spi_test()
+char reverse_byte(char byte)
 {
-    peripheral_init();
-    peripheral_spi_init();
+    char rval = 0;
 
-    int rval = 0;
-    float temperature = 0;
-
-    while(rval < 950)
+    for (int i = 0; i < 4; ++i)
     {
-        temperature = mcp3008_read_channel(1);
-
-        fprintf(stderr, "Ch %d: %d \tCh %d: %d\n", 1, rval = mcp3008_read_channel(0), 2, (int) temperature);
-
-        temperature *= (500.0/1024.0);
-        fprintf(stderr, "Temperature: %f\n\n", temperature);
-
-        bcm2835_delay(100);
+        rval |= ((byte & (1 << i)) << (8 - i * 2 - 1));
+    }
+    for (int i = 3; i >= 0; --i)
+    {
+        rval |= ((byte & (0x80 >> i)) >> (8 - i * 2 - 1));
     }
 
-    peripheral_spi_term();
-    peripheral_term();
+    return rval;
+}
+
+void spi_test()
+{
+    if(!peripheral_init() && !peripheral_spi_init())
+    {
+        int rval = 0;
+        float temperature = 0;
+
+        while(rval < 950)
+        {
+            temperature = mcp3008_read_channel(1);
+
+            fprintf(stderr, "Ch %d: %d \tCh %d: %d\n", 1, rval = mcp3008_read_channel(0), 2, (int) temperature);
+
+            temperature = (225.0 * temperature) / 256.0 - 58.0;
+            fprintf(stderr, "Temperature: %f\n\n", temperature);
+
+            bcm2835_delay(100);
+        }
+
+        peripheral_spi_term();
+        peripheral_term();
+    }
+    else
+    {
+        fprintf(stderr, "%s\n", "Could not initialize SPI peripherals!");
+    }
+}
+
+void i2c_test()
+{
+    char on[2] = { 0 };
+    on[0] = TSL2561_CONTROL;
+    on[1] = 0x03;
+
+    char id = TSL2561_ID; // 0x8A
+
+    char rval = 0;
+
+    //memset(rval, 0, sizeof(rval));
+
+    if(!peripheral_init())
+    {
+        peripheral_i2c_init();
+
+        bcm2835_i2c_setSlaveAddress(0x39); // TSL2561 Address (when ADDR pin is floating)
+        bcm2835_i2c_set_baudrate(100000); // 400 kHz
+
+        bcm2835_i2c_write(on, 2);
+
+        char test = TSL2561_COMMAND;
+        bcm2835_i2c_write(&test, 1);
+        bcm2835_i2c_read(&rval, 1);
+
+        fprintf(stderr, "Control register: 0x%x\n", rval);
+
+        bcm2835_i2c_write(&id, 1);
+        bcm2835_i2c_read(&rval, 1);
+
+        fprintf(stderr, "ID register: 0x%x\n", rval);
+
+        peripheral_i2c_term();
+        peripheral_term();
+    }
+    else
+    {
+        fprintf(stderr, "%s\n", "Could not initialize I2C peripherals!");
+    }
 }
 
 void ui_test()

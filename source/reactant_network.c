@@ -57,7 +57,7 @@ int start_discovery_server(int port)
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons((uint16_t) port);
-    server_addr.sin_addr.s_addr = get_interface();
+    server_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
     memset(server_addr.sin_zero, 0, sizeof(server_addr.sin_zero));
 
     struct timespec delay;
@@ -81,11 +81,12 @@ int start_discovery_server(int port)
         if ((bytes = sendto(sock, "Discovery Broadcast", 19, 0, (struct sockaddr *) &server_addr, sizeof(struct sockaddr))) < 0)
         {
             fprintf(stderr, "Failed to broadcast message!\n");
-            return 1;
+            break;
         }
     }
 
     close(sock);
+    return 1;
 }
 
 int discover_server(int port)
