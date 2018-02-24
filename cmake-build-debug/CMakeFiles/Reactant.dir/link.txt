@@ -1,0 +1,1 @@
+/usr/bin/cc  -g -Wall -Wextra -g  -Wl,--enable-auto-import CMakeFiles/Reactant.dir/main.c.o CMakeFiles/Reactant.dir/lib/tcp.c.o CMakeFiles/Reactant.dir/lib/ui.c.o  -o bin/Reactant.exe -Wl,--out-implib,lib/libReactant.dll.a -Wl,--major-image-version,0,--minor-image-version,0 /usr/lib/libcurses.dll.a /usr/lib/libform.dll.a 

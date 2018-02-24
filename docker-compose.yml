@@ -1,0 +1,11 @@
+version: "3"
+services:
+  dev:
+    build: .
+    volumes:
+      - ".:/opt/project"
+    ports:
+      - "10801:10801"
+    container_name: reactant_dev
+    stdin_open: true
+    tty: true
