@@ -1,2 +1,2 @@
-# Reactant_2
+# Reactant
 Repository for my senior project, "Reactant".
