@@ -150,7 +150,7 @@ int start_core_server(int port)
     // Start listening on the provided port
     if (listen(sock, LISTEN_QUEUE) < 0)
     {
-        fprintf(stderr, "Failed to listen for incoming connections!\n");
+        fprintf(stderr, "Could not listen for incoming connections!\n");
         return 1;
     }
 

@@ -5,10 +5,11 @@
  ******************************************************************************/
 
 #include <stdio.h>
+#include <fcntl.h>
+#include <linux/i2c-dev.h>
+#include <unistd.h>
 
 #include <bcm2835.h>
-#include <linux/i2c-dev.h>
-#include <fcntl.h>
 
 
 /*******************************************************************************
@@ -36,6 +37,12 @@ int peripheral_spi_term();
 int peripheral_i2c_init();
 int peripheral_i2c_term();
 
+int i2c_set_addr(char addr);
+char smbus_read_byte(char reg);
+short smbus_read_word(char reg);
+int smbus_write_byte(char reg, char data);
+int smbus_write_word(char reg, short data);
+
 
 /*******************************************************************************
  *  Category:   MCP3008
@@ -50,8 +57,9 @@ int mcp3008_read_channel(int channel);
  ******************************************************************************/
 // Register definitions
 #define TSL2561_COMMAND (0x80)
+#define TSL2561_WORD (0x20)
 
-#define TSL2561_CONTROL (0x00)
+#define TSL2561_CONTROL (0x80)
 #define TSL2561_TIMING  (0x81)
 #define TSL2561_THRESHLOWLOW    (0x82)
 #define TSL2561_THRESHLOWHIGH   (0x83)
@@ -63,4 +71,16 @@ int mcp3008_read_channel(int channel);
 #define TSL2561_DATA0HIGH   (0x8D)
 #define TSL2561_DATA1LOW    (0x8E)
 #define TSL2561_DATA1HIGH   (0x8F)
+
+#define TSL2561_INTEGRATION_13 (0x00)
+#define TSL2561_INTEGRATION_101 (0x01)
+#define TSL2561_INTEGRATION_402 (0x02)
+
+#define TSL2561_GAIN_1 (0x00)
+#define TSL2561_GAIN_16 (0x10)
+
+int tsl2561_enable();
+int tsl2561_disable();
+
+
 

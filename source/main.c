@@ -8,7 +8,6 @@
 #include "reactant_ui.h"
 
 #include <curses.h>
-#include <linux/i2c-dev.h>
 
 
 char reverse_byte(char byte);
@@ -27,7 +26,7 @@ int main()
     //start_discovery_server(10112);
     //discover_server(10112);
 
-    //spi_test();
+    spi_test();
     i2c_test();
 
     return 0;
@@ -51,12 +50,12 @@ char reverse_byte(char byte)
 
 void spi_test()
 {
-    if(!peripheral_init() && !peripheral_spi_init())
+    if(!peripheral_init())
     {
         int rval = 0;
         float temperature = 0;
 
-        while(rval < 950)
+        while(rval < 850)
         {
             temperature = mcp3008_read_channel(1);
 
@@ -68,54 +67,60 @@ void spi_test()
             bcm2835_delay(100);
         }
 
-        peripheral_spi_term();
         peripheral_term();
     }
     else
     {
-        fprintf(stderr, "%s\n", "Could not initialize SPI peripherals!");
+        fprintf(stderr, "%s\n", "spi_test() failed! Could not initialize peripherals!");
     }
 }
 
 void i2c_test()
 {
-    //char on[2] = { TSL2561_CONTROL, 0x03 };
-    //char id = TSL2561_ID; // 0x8A
+    char rval;
+    short ch0, ch1;
 
-    char rval = 0;
-
-    char * device = "/dev/i2c-1";
-    int file;
-    if ((file = open(device, O_RDWR)) < 0)
+    // Initialize peripherals
+    if(!peripheral_init())
     {
-        fprintf(stderr, "%s\n", "i2c_test() failed to open I2C device");
-        return;
+        // Setup timing register (402ms integration time, 16x gain)
+        smbus_write_byte(TSL2561_TIMING, TSL2561_INTEGRATION_402 | TSL2561_GAIN_16);
+
+        // Ensure valid ID register
+        if ((rval = smbus_read_byte(TSL2561_ID)) != 0x50)
+        {
+            fprintf(stderr, "%s: 0x%x\n", "Returned invalid ID register read!", rval);
+        }
+
+        // Enable light sensor
+        tsl2561_enable();
+
+        do
+        {
+            // Wait 403 ms (because of the 402ms integration time)
+            usleep(0.403 * 1000000);
+
+            // Read channel 0 (broadband)
+            ch0 = smbus_read_word(TSL2561_WORD | TSL2561_DATA0LOW);
+
+            // Read channel 1 (IR)
+            ch1 = smbus_read_word(TSL2561_WORD | TSL2561_DATA1LOW);
+
+            fprintf(stderr, "Ch0 (broadband): %d \tCh1 (IR): %d\n", ch0, ch1);
+
+        } while (ch0 > 2000);
+
+        // Disable light sensor
+        tsl2561_disable();
+
+        // Terminate peripherals
+        peripheral_term();
+    }
+    else
+    {
+        fprintf(stderr, "%s\n", "i2c_test() failed! Could not initialize peripherals!");
     }
 
-    if (ioctl(file, I2C_SLAVE, 0x39) < 0)
-    {
-        fprintf(stderr, "%s\n", "i2c_test() failed to set I2C slave");
-        close(file);
-        return;
-    }
-
-    if(i2c_smbus_write_byte_data(file, TSL2561_CONTROL, 0x03) < 0)
-    {
-        fprintf(stderr, "%s\n", "i2c_test() failed to transmit ENABLE");
-        close(file);
-        return;
-    }
-
-    if((rval = i2c_smbus_read_byte_data(file, TSL2561_ID)) < 0)
-    {
-        fprintf(stderr, "%s\n", "i2c_test() failed to receive ID");
-        close(file);
-        return;
-    }
-
-    fprintf(stderr, "Returned: 0x%x\n", rval);
-
-    close(file);
 }
 
 void ui_test()
