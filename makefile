@@ -1,3 +1,6 @@
+# Makefile developed and provided by Troy Scevers
+# Modified by Daniel Stotts; tailored for use in the Reactant project
+
 # Specify the main target
 TARGET = main
 # Default Build Type
