@@ -12,12 +12,13 @@
 // #    Error checking                                                         #
 // #                                                                           #
 // #############################################################################
+int reactant_errno = 0;
+
 char * _general_status_message[] =
 {
     "An unkown status was returned",
     "Function returned successfully",
     "Invalid argument",
-
 };
 
 /*******************************************************************************
@@ -368,7 +369,7 @@ char * _queue_status_message[] =
 
 /*******************************************************************************
  *  Function:   Create queue
- *  Description:    Allocates and returns a pointer to a new queue object
+ *  Description:    Initializes the given queue object
  ******************************************************************************/
 int queue_construct(queue_t * queue, size_t capacity)
 {
@@ -507,7 +508,7 @@ int enqueue_blocking(queue_t * queue, void * item)
  *  Function:   Dequeue
  *  Description:    Removes an item from the given queue
  ******************************************************************************/
-int dequeue(queue_t * queue, void * item)
+int dequeue(queue_t * queue, void ** item)
 {
     int rval = QUEUE_EMPTY;
 
@@ -519,7 +520,7 @@ int dequeue(queue_t * queue, void * item)
         if (queue->size > 0 && sem_trywait(queue->dequeue_semaphore) == 0)
         {
             // Dequeue the item.
-            memcpy(item, queue->queue[queue->tail], sizeof(void *));
+            *item = (void *) queue->queue[queue->tail];
             queue->tail = (queue->tail + 1) % queue->capacity;
             queue->size -= 1;
             rval = SUCCESS;
@@ -543,7 +544,7 @@ int dequeue(queue_t * queue, void * item)
  *  Description:    Removes and returns an item from the given queue, blocks
  *                  until the queue has an item to remove
  ******************************************************************************/
-int dequeue_blocking(queue_t * queue, void * item)
+int dequeue_blocking(queue_t * queue, void ** item)
 {
     int rval = QUEUE_EMPTY;
 
@@ -554,7 +555,7 @@ int dequeue_blocking(queue_t * queue, void * item)
         sem_wait(queue->dequeue_semaphore);
 
         // Dequeue the item.
-        memcpy(item, queue->queue[queue->tail], sizeof(void *));
+        *item = (void *) queue->queue[queue->tail];
         queue->tail = (queue->tail + 1) % queue->capacity;
         queue->size -= 1;
         rval = SUCCESS;
@@ -562,6 +563,67 @@ int dequeue_blocking(queue_t * queue, void * item)
         // Increment the enqueue semaphore.
         sem_post(queue->enqueue_semaphore);
         pthread_mutex_unlock(queue->dequeue_blocking_mutex);
+    }
+    else
+    {
+        rval = ARGUMENT;
+    }
+
+    return rval;
+}
+
+
+// #############################################################################
+// #                                                                           #
+// #    Message protocol                                                       #
+// #                                                                           #
+// #############################################################################
+/*******************************************************************************
+ *  Function:   Create message
+ *  Description:    Initializes the given message object
+ *                  Note: Struct element sizes must conform to the sizes
+ *                        defined by the Reactant message standard
+ ******************************************************************************/
+int message_construct(message_t * message)
+{
+    int rval = SUCCESS;
+
+    if (message)
+    {
+        // Initialize values to zero
+        message->bytes_remaining = 0;
+        message->source_id = 0;
+        message->payload = calloc(250, sizeof(char));
+
+        message->message_string = calloc(256, sizeof(char));
+    }
+    else
+    {
+        rval = ARGUMENT;
+    }
+
+    return rval;
+}
+
+/*******************************************************************************
+ *  Function:   Destroy message
+ *  Description:    Destroys the given message object
+ ******************************************************************************/
+int message_destruct(message_t * message)
+{
+    int rval = SUCCESS;
+
+    if (message)
+    {
+        // Free strings
+        if(message->payload)
+        {
+            free(message->payload);
+        }
+        if(message->message_string)
+        {
+            free(message->message_string);
+        }
     }
     else
     {

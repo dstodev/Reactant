@@ -35,7 +35,14 @@ typedef enum _control_t
 
 } control_t;
 
+
+/*******************************************************************************
+ *  Category:   Error checking
+ *  Description:    Allows function return status to be easily inspected
+ ******************************************************************************/
 // Status
+extern int reactant_errno; // TODO: Refactor to return intuitively
+
 extern char * _general_status_message[];
 typedef enum _status_t
 {
@@ -47,11 +54,6 @@ typedef enum _status_t
 
 } status_t;
 
-
-/*******************************************************************************
- *  Category:   Error checking
- *  Description:    Allows function return status to be easily inspected
- ******************************************************************************/
 // Error check function
 void _error_check(int, int, char *[]);
 
@@ -161,7 +163,31 @@ int queue_destruct(queue_t * queue);
 
 int enqueue(queue_t * queue, void * item);
 int enqueue_blocking(queue_t * queue, void * item);
-int dequeue(queue_t * queue, void * item);
-int dequeue_blocking(queue_t * queue, void * item);
+int dequeue(queue_t * queue, void ** item);
+int dequeue_blocking(queue_t * queue, void ** item);
+
+
+/*******************************************************************************
+ *  Category:   Message protocol
+ *  Description:    Implements helper functions for using the Reactant message
+ *                  protocol.
+ ******************************************************************************/
+// Constant definitions
+#define MESSAGE_LENGTH (256)
+
+// Message object type
+typedef struct _message_t
+{
+    short bytes_remaining;  // 2 bytes
+    int source_id;          // 4 bytes
+    char * payload;         // 250 bytes (where the last byte must always be zero)
+
+    char * message_string;  // Full message, built from components
+
+} message_t;
+
+// Message functions
+int message_construct(message_t * message);
+int message_destruct(message_t * message);
 
 #endif // REACTANT_UTIL_H

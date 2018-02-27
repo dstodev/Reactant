@@ -178,8 +178,8 @@ void queue_test()
 {
     queue_t q;
 
-    int items[10];
-    int rval = 0;
+    int * items[10];
+    int * rval = 0;
 
     debug_control(ENABLE);
 
@@ -187,36 +187,42 @@ void queue_test()
 
     for(int i = 0; i < q.capacity; ++i)
     {
-        items[i] = i;
-        queue_check(enqueue(&q, &items[i]));
+        items[i] = malloc(sizeof(int));
+        *items[i] = i;
+        queue_check(enqueue(&q, items[i]));
     }
 
     printf("Capacity: %d, Size: %d\n", q.capacity, q.size);
 
     printf("test\n");
-    queue_check(enqueue(&q, &items[0]));
+    queue_check(enqueue(&q, items[0]));
 
     for(int i = 0; i < 5; ++i)
     {
-        queue_check(dequeue(&q, &rval));
-        printf("%d\n", rval);
+        queue_check(dequeue(&q, (void **) &rval));
+        printf("%d\n", *rval);
     }
 
     for(int i = 0; i < 5; ++i)
     {
-        queue_check(enqueue_blocking(&q, &items[7]));
+        queue_check(enqueue_blocking(&q, items[7]));
     }
 
     for(int i = 0; i < q.capacity; ++i)
     {
-        queue_check(dequeue_blocking(&q, &rval));
-        printf("%d\n", rval);
+        queue_check(dequeue_blocking(&q, (void **) &rval));
+        printf("%d\n", *rval);
     }
 
     printf("test\n");
 
-    queue_check(dequeue(&q, &rval));
-    printf("%d\n", rval);
+    queue_check(dequeue(&q, (void **) &rval));
+    printf("%d\n", *rval);
+
+    for (int i = 0; i < q.capacity; ++i)
+    {
+        free(items[i]);
+    }
 
     queue_destruct(&q);
 }
