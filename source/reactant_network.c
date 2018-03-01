@@ -165,24 +165,49 @@ int start_core_server(int port)
     return 0;
 }
 
-int start_node_client(char * ip, int port)
+int start_node_client(core_t * core, char * ip, int port)
 {
-    int rval = 0;
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-
     struct sockaddr_in server_addr;
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(port);
-    inet_pton(AF_INET, ip, &server_addr.sin_addr);
-    memset(server_addr.sin_zero, 0, sizeof(server_addr.sin_zero));
 
-    if (connect(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
+    if (core)
     {
-		fprintf(stderr, "%s\n", "Could not connect to server!");
-		return 1;
-	}    
+        server_addr.sin_family = AF_INET;   // IPv4
+        server_addr.sin_port = htons(port); // Port
+        inet_pton(AF_INET, ip, &server_addr.sin_addr);  // Convert string represenation of IP address to integer value
+        memset(server_addr.sin_zero, 0, sizeof(server_addr.sin_zero));
 
-	close(sock);
+        // Connect to Core device
+        if (connect(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
+        {
+            fprintf(stderr, "%s\n", "Could not connect to server!");
+            return 1;
+        }
+
+        core->addr = calloc(1, sizeof(server_addr));
+        *core->addr = server_addr;
+        core->sock = sock;
+    }
+
+    //close(sock);
+
+    return 0;
+}
+
+int stop_node_client(core_t * core)
+{
+    if (core)
+    {
+        // Free address struct
+        if (core->addr)
+        {
+            free(core->addr);
+        }
+
+        // Close socket
+        close(core->sock);
+        core->sock = 0;
+    }
 
     return 0;
 }

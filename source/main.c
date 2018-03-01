@@ -26,8 +26,8 @@ int test_callback(WINDOW * window);
 
 int main()
 {
-    //core_test();
-	node_test();
+    core_test();
+    //node_test();
 
     //start_discovery_server(10112);
     //discover_server(10112);
@@ -45,7 +45,10 @@ void core_test()
 
 void node_test()
 {
-    start_node_client("10.103.4.251", 10112);
+    core_t core;
+
+    start_node_client(&core, "10.103.4.251", 10112);
+    stop_node_client(&core);
 }
 
 char reverse_byte(char byte)

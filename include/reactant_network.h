@@ -18,10 +18,19 @@
 
 extern const int LISTEN_QUEUE;
 
+typedef struct _core_t
+{
+    struct sockaddr_in * addr;
+    int sock;
+
+
+} core_t;
+
 unsigned long get_interface();
 int start_discovery_server(int port);
 int discover_server(int port);
 int start_core_server(int port);
-int start_node_client(char * ip, int port);
+int start_node_client(core_t * core, char * ip, int port);
+int stop_node_client(core_t * core);
 
 #endif // REACTANT_NETWORK_H
