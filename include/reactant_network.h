@@ -9,6 +9,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <ifaddrs.h>
+#include <netdb.h>
 
 #include "reactant_util.h"
 
@@ -21,5 +22,6 @@ unsigned long get_interface();
 int start_discovery_server(int port);
 int discover_server(int port);
 int start_core_server(int port);
+int start_node_client(char * ip, int port);
 
 #endif // REACTANT_NETWORK_H

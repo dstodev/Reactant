@@ -12,6 +12,9 @@
 
 char reverse_byte(char byte);
 
+void core_test();
+void node_test();
+
 void spi_test();
 void i2c_test();
 void ui_test();
@@ -23,13 +26,25 @@ int test_callback(WINDOW * window);
 
 int main()
 {
+    core_test();
+
     //start_discovery_server(10112);
     //discover_server(10112);
 
-    spi_test();
-    i2c_test();
+    //spi_test();
+    //i2c_test();
 
     return 0;
+}
+
+void core_test()
+{
+    start_core_server(12051);
+}
+
+void node_test()
+{
+    start_node_client("", 12051);
 }
 
 char reverse_byte(char byte)

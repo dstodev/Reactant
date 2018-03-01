@@ -154,13 +154,43 @@ int start_core_server(int port)
         return 1;
     }
 
-    // Wait for incoming connections
+    // Wait for incoming connectionsc
     handle = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_size);
     if (handle < 0)
     {
         fprintf(stderr, "Failed to accept incoming connection!\n");
         return 1;
     }
+
+    return 0;
+}
+
+int start_node_client(char * ip, int port)
+{
+    int rval = 0;
+    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    int server_size = sizeof(struct sockaddr);
+
+    struct addrinfo hints, * results;
+    hints.ai_family = AF_INET;
+    hints.ai_protocol = IPPROTO_TCP;
+
+    rval = getaddrinfo(ip, NULL, &hints, &results);
+    if (rval)
+    {
+        fprintf(stderr, "%s\n", "Could not find server!");
+        return 1;
+    }
+
+    fprintf(stderr, "%s \t%x\n", results->ai_canonname, ((struct sockaddr_in *) results->ai_addr)->sin_addr.s_addr);
+
+    freeaddrinfo(results);
+
+    struct sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(port);
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    memset(server_addr.sin_zero, 0, sizeof(server_addr.sin_zero));
 
     return 0;
 }
