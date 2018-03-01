@@ -217,3 +217,13 @@ int stop_node_client(core_t * core)
 
     return 0;
 }
+
+int publish(core_t * core, char * message)
+{
+	return 0;
+}
+
+int subscribe(core_t * core, char * channel)
+{
+	return 0;
+}
