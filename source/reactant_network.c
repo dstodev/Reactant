@@ -172,6 +172,9 @@ int start_node_client(core_t * core, char * ip, int port)
 
     if (core)
     {
+		// Clear core struct
+		memset(core, 0, sizeof(*core));
+		
         server_addr.sin_family = AF_INET;   // IPv4
         server_addr.sin_port = htons(port); // Port
         inet_pton(AF_INET, ip, &server_addr.sin_addr);  // Convert string represenation of IP address to integer value
@@ -183,13 +186,13 @@ int start_node_client(core_t * core, char * ip, int port)
             fprintf(stderr, "%s\n", "Could not connect to server!");
             return 1;
         }
-
-        core->addr = calloc(1, sizeof(server_addr));
-        *core->addr = server_addr;
-        core->sock = sock;
+        else
+        {
+			core->addr = calloc(1, sizeof(server_addr));
+			*core->addr = server_addr;
+			core->sock = sock;
+		}
     }
-
-    //close(sock);
 
     return 0;
 }
@@ -205,8 +208,11 @@ int stop_node_client(core_t * core)
         }
 
         // Close socket
-        close(core->sock);
-        core->sock = 0;
+        if(core->sock)
+        {
+			close(core->sock);
+			core->sock = 0;
+		}
     }
 
     return 0;

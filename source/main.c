@@ -26,8 +26,8 @@ int test_callback(WINDOW * window);
 
 int main()
 {
-    core_test();
-    //node_test();
+    //core_test();
+    node_test();
 
     //start_discovery_server(10112);
     //discover_server(10112);
