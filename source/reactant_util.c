@@ -584,7 +584,7 @@ int dequeue_blocking(queue_t * queue, void ** item)
  *                  Note: Struct element sizes must conform to the sizes
  *                        defined by the Reactant message standard
  ******************************************************************************/
-int message_construct(message_t * message)
+int message_initialize(message_t * message)
 {
     int rval = SUCCESS;
 
@@ -593,9 +593,8 @@ int message_construct(message_t * message)
         // Initialize values to zero
         message->bytes_remaining = 0;
         message->source_id = 0;
-        message->payload = calloc(250, sizeof(char));
-
-        message->message_string = calloc(256, sizeof(char));
+        memset(message->payload, 0, sizeof(message->payload));
+        memset(message->message_string, 0, sizeof(message->message_string));
     }
     else
     {
@@ -606,29 +605,75 @@ int message_construct(message_t * message)
 }
 
 /*******************************************************************************
- *  Function:   Destroy message
- *  Description:    Destroys the given message object
+ *  Function:   Build message
+ *  Description:    Generate the message_string field of the given message_t
  ******************************************************************************/
-int message_destruct(message_t * message)
+int message_build(message_t * message)
 {
-    int rval = SUCCESS;
+	int rval = SUCCESS;
+	
+	char bytes_remaining[3];
+	char source_id[5];
 
-    if (message)
-    {
-        // Free strings
-        if(message->payload)
-        {
-            free(message->payload);
-        }
-        if(message->message_string)
-        {
-            free(message->message_string);
-        }
-    }
-    else
-    {
-        rval = ARGUMENT;
-    }
+	memset(bytes_remaining, 0, sizeof(bytes_remaining));
+	memset(source_id, 0, sizeof(source_id));
 
-    return rval;
+	if (message)
+	{
+		// Convert bytes_remaining field (short, 2 bytes) to string
+		for (int i = 0; i < sizeof(bytes_remaining) - 1; ++i)
+		{
+			bytes_remaining[i] |= CAPTURE_BYTE(message->bytes_remaining, sizeof(bytes_remaining) - 2 - i);
+		}
+
+		// Convert source_id field (int, 4 bytes) to string
+		for (int i = 0; i < sizeof(source_id) - 1; ++i)
+		{
+			source_id[i] |= CAPTURE_BYTE(message->source_id, sizeof(source_id) - 2 - i);
+		}
+
+		// Form message string
+		memset(message->message_string, 0, sizeof(message->message_string));
+		strcat(message->message_string, bytes_remaining);
+		strcat(message->message_string, source_id);
+		if (message->payload)
+		{
+			strcat(message->message_string, message->payload);
+		}
+
+		message_debug_hex(message->message_string);
+	}
+	else
+	{
+		rval = ARGUMENT;
+	}
+
+	return rval;
+}
+
+int message_debug_hex(char * message)
+{
+	const int cols = 16;
+	const int len = 256;
+
+	if (message)
+	{
+		fprintf(stderr, "%4c", ' ');
+		for (int i = 0; i < cols; ++i)
+		{
+			fprintf(stderr, "%-2x ", i);
+		}
+		fprintf(stderr, "\n");
+		for (int i = 0; i < len / cols + (len % cols ? 1 : 0); ++i)
+		{
+			fprintf(stderr, "%2x: ", i);
+			for (int j = 0; j < cols && i * cols + j < len; ++j)
+			{
+				fprintf(stderr, "%02x ", message[i * cols + j]);
+			}
+			fprintf(stderr, "\n");
+		}
+	}
+
+	return 0;
 }

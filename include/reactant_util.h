@@ -175,19 +175,23 @@ int dequeue_blocking(queue_t * queue, void ** item);
 // Constant definitions
 #define MESSAGE_LENGTH (256)
 
+// Macro definitions
+#define CAPTURE_BYTE(i, n) (((i) & (0xFF << (8 * (n)))) >> (8 * (n)))
+
 // Message object type
 typedef struct _message_t
 {
     short bytes_remaining;  // 2 bytes
     int source_id;          // 4 bytes
-    char * payload;         // 250 bytes (where the last byte must always be zero)
+    char payload[250];    	// 250 bytes (where the last byte must always be zero)
 
-    char * message_string;  // Full message, built from components
+    char message_string[256];	// Full message, built from components
 
 } message_t;
 
 // Message functions
-int message_construct(message_t * message);
-int message_destruct(message_t * message);
+int message_initialize(message_t * message);
+int message_build(message_t * message);
+int message_debug_hex(char * message);
 
 #endif // REACTANT_UTIL_H

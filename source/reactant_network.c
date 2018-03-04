@@ -134,6 +134,9 @@ int start_core_server(int port)
     int handle = 0;
     int client_size = sizeof(struct sockaddr);
 
+	char buffer[256];
+    int bytes = 0;
+
     struct sockaddr_in server_addr, client_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons((uint16_t) port);
@@ -143,23 +146,38 @@ int start_core_server(int port)
     // Bind server socket to the given port
     if (bind(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
     {
-        fprintf(stderr, "Could not bind to %d:%d!\n", ntohl(server_addr.sin_addr.s_addr), ntohs(port));
+        fprintf(stderr, "%s %d:%d!\n", "Could not bind to", ntohl(server_addr.sin_addr.s_addr), ntohs(port));
+        close(sock);
         return 1;
     }
 
     // Start listening on the provided port
     if (listen(sock, LISTEN_QUEUE) < 0)
     {
-        fprintf(stderr, "Could not listen for incoming connections!\n");
+        fprintf(stderr, "%s\n", "Could not listen for incoming connections!");
+        close(sock);
         return 1;
     }
 
-    // Wait for incoming connectionsc
-    handle = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_size);
-    if (handle < 0)
-    {
-        fprintf(stderr, "Failed to accept incoming connection!\n");
-        return 1;
+	while(1)
+	{
+		// Wait for incoming connections
+		handle = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_size);
+		if (handle < 0)
+		{
+			fprintf(stderr, "%s\n", "Failed to accept incoming connection!");
+			close(sock);
+			return 1;
+		}
+
+		// Read incoming message
+		bytes = read(sock, buffer, sizeof(buffer));
+		if (bytes)
+		{
+			fprintf(stderr, "%s: %d!\n", "Invalid socket read, rval", bytes);
+			close(sock);
+			return 1;
+		}
     }
 
     return 0;
@@ -218,8 +236,33 @@ int stop_node_client(core_t * core)
     return 0;
 }
 
-int publish(core_t * core, char * message)
+int publish(core_t * core, char * payload)
 {
+	message_t message;
+	
+	if (core && payload)
+	{
+		if (strlen(payload) >= 250)
+		{
+			// TODO: Allow arbitrary message size
+			fprintf(stderr, "%s\n", "Cannot publish message of length 250 or greater!");
+			return 1;
+		}
+		
+		message_initialize(&message);
+
+		message.bytes_remaining = strlen(payload);
+		message.source_id = 0;
+		strcpy(message.payload, payload);
+		
+				
+	}
+	else
+	{
+		// Invalid parameters
+		return 1;
+	}
+	
 	return 0;
 }
 

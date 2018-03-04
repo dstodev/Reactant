@@ -26,8 +26,15 @@ int test_callback(WINDOW * window);
 
 int main()
 {
-    //core_test();
-    node_test();
+	message_t test;
+	message_initialize(&test);
+	test.bytes_remaining = 0xFFFA;
+	test.source_id = 0x12345678;
+	message_build(&test);
+	return 1;
+	
+    core_test();
+    //node_test();
 
     //start_discovery_server(10112);
     //discover_server(10112);
