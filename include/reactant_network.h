@@ -10,6 +10,9 @@
 #include <unistd.h>
 #include <ifaddrs.h>
 #include <netdb.h>
+#include <signal.h>
+#include <errno.h>
+#include <exsrc_aes.h>
 
 #include "reactant_util.h"
 
@@ -33,7 +36,7 @@ int start_core_server(int port);
 int start_node_client(core_t * core, char * ip, int port);
 int stop_node_client(core_t * core);
 
-int publish(core_t * core, char * message);
+int publish(core_t * core, char * channel, char * message);
 int subscribe(core_t * core, char * channel);
 
 #endif // REACTANT_NETWORK_H

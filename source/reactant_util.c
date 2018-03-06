@@ -9,6 +9,20 @@
 
 // #############################################################################
 // #                                                                           #
+// #    General		                                                           #
+// #                                                                           #
+// #############################################################################
+/*******************************************************************************
+ *  Function:   Digits
+ *  Description:    Returns the number of digits in the given integer
+ ******************************************************************************/
+int digits(int i, int base)
+{
+	return (i ? (int) (log((double) (i < 0 ? -1 * i : i)) / log(base)) + 1 : 1);
+}
+
+// #############################################################################
+// #                                                                           #
 // #    Error checking                                                         #
 // #                                                                           #
 // #############################################################################
@@ -605,43 +619,75 @@ int message_initialize(message_t * message)
 }
 
 /*******************************************************************************
- *  Function:   Build message
+ *  Function:   Pack message
  *  Description:    Generate the message_string field of the given message_t
  ******************************************************************************/
-int message_build(message_t * message)
+int message_pack(message_t * message)
 {
 	int rval = SUCCESS;
-	
-	char bytes_remaining[3];
-	char source_id[5];
-
-	memset(bytes_remaining, 0, sizeof(bytes_remaining));
-	memset(source_id, 0, sizeof(source_id));
 
 	if (message)
 	{
+		// Clear field to fill
+		memset(message->message_string, 0, sizeof(message->message_string));
+		
 		// Convert bytes_remaining field (short, 2 bytes) to string
-		for (int i = 0; i < sizeof(bytes_remaining) - 1; ++i)
+		for (int i = 0; i < 2; ++i)
 		{
-			bytes_remaining[i] |= CAPTURE_BYTE(message->bytes_remaining, sizeof(bytes_remaining) - 2 - i);
+			//bytes_remaining[i] |= CAPTURE_BYTE(message->bytes_remaining, sizeof(bytes_remaining) - 2 - i);
+			message->message_string[i] = CAPTURE_BYTE(message->bytes_remaining, 1 - i);
 		}
 
 		// Convert source_id field (int, 4 bytes) to string
-		for (int i = 0; i < sizeof(source_id) - 1; ++i)
+		for (int i = 0; i < 4; ++i)
 		{
-			source_id[i] |= CAPTURE_BYTE(message->source_id, sizeof(source_id) - 2 - i);
+			//source_id[i] |= CAPTURE_BYTE(message->source_id, sizeof(source_id) - 2 - i);
+			message->message_string[i + 2] = CAPTURE_BYTE(message->source_id, 3 - i);
 		}
 
-		// Form message string
-		memset(message->message_string, 0, sizeof(message->message_string));
-		strcat(message->message_string, bytes_remaining);
-		strcat(message->message_string, source_id);
-		if (message->payload)
-		{
-			strcat(message->message_string, message->payload);
-		}
+		// Append payload to message string
+		strcat(message->message_string + 6, message->payload);
+	}
+	else
+	{
+		rval = ARGUMENT;
+	}
 
-		message_debug_hex(message->message_string);
+	return rval;
+}
+
+/*******************************************************************************
+ *  Function:   Unpack message
+ *  Description:    Generate the message fields of the given message_t
+ ******************************************************************************/
+int message_unpack(message_t * message)
+{
+	int rval = SUCCESS;
+
+	if (message)
+	{
+		// Clear fields to fill
+		message->bytes_remaining = 0;
+		message->source_id = 0;
+		memset(message->payload, 0, sizeof(message->payload));
+		
+		// Get bytes_remaining field
+		for (int i = 0; i < 2; ++i)
+		{
+			message->bytes_remaining |= message->message_string[i] << (8 * (1 - i));
+		}
+		
+		// Get source_id field
+		for (int i = 2; i < 6; ++i)
+		{
+			message->source_id |= message->message_string[i] << (8 * (3 - (i - 2)));
+		}
+		
+		// Get payload
+		for (int i = 6; i < 256; ++i)
+		{
+			message->payload[i - 6] = message->message_string[i];
+		}
 	}
 	else
 	{
@@ -655,7 +701,7 @@ int message_debug_hex(char * message)
 {
 	const int cols = 16;
 	const int len = 256;
-
+	
 	if (message)
 	{
 		fprintf(stderr, "%4c", ' ');

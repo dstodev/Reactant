@@ -19,25 +19,24 @@ void spi_test();
 void i2c_test();
 void ui_test();
 void queue_test();
+void message_test();
 
 int configure_callback(WINDOW * PH(window));
 int test_callback(WINDOW * window);
 
 
 int main()
-{
-	message_t test;
-	message_initialize(&test);
-	test.bytes_remaining = 0xFFFA;
-	test.source_id = 0x12345678;
-	message_build(&test);
-	return 1;
+{	
+	core_t core;
 	
-    core_test();
-    //node_test();
+	start_node_client(&core, "10.103.1.42", 10112);
 
-    //start_discovery_server(10112);
-    //discover_server(10112);
+	publish(&core, "chat1", "this is a test");
+	
+	stop_node_client(&core);
+	
+    //core_test();
+    //node_test();
 
     //spi_test();
     //i2c_test();
@@ -251,6 +250,25 @@ void queue_test()
     }
 
     queue_destruct(&q);
+}
+
+void message_test()
+{
+	message_t message1, message2;
+	message_initialize(&message1);
+	message_initialize(&message2);
+	
+	message1.bytes_remaining = 0x1234;
+	message1.source_id = 0x567890AB;
+	strcpy(message1.payload, "Hello!");
+
+	message_pack(&message1);
+
+	strcpy(message2.message_string, message1.message_string);
+
+	message_unpack(&message2);
+
+	fprintf(stderr, "%x %x %s\n", message2.bytes_remaining, message2.source_id, message2.payload);
 }
 
 int configure_callback(WINDOW * PH(window))

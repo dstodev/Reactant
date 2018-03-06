@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <math.h>
 
 
 /*******************************************************************************
@@ -35,6 +36,8 @@ typedef enum _control_t
 
 } control_t;
 
+// Count digits in integer
+int digits(int i, int base);
 
 /*******************************************************************************
  *  Category:   Error checking
@@ -191,7 +194,8 @@ typedef struct _message_t
 
 // Message functions
 int message_initialize(message_t * message);
-int message_build(message_t * message);
+int message_pack(message_t * message);
+int message_unpack(message_t * message);
 int message_debug_hex(char * message);
 
 #endif // REACTANT_UTIL_H
