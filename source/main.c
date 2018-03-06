@@ -26,16 +26,16 @@ int test_callback(WINDOW * window);
 
 
 int main()
-{	
-	core_t core;
-	
-	start_node_client(&core, "10.103.1.42", 10112);
+{
+    /*core_t core;
 
-	publish(&core, "chat1", "this is a test");
-	
-	stop_node_client(&core);
-	
-    //core_test();
+    start_node_client(&core, "10.103.1.42", 10112);
+
+    publish(&core, "chat1", "this is a test");
+
+    stop_node_client(&core);*/
+
+    core_test();
     //node_test();
 
     //spi_test();
@@ -254,21 +254,21 @@ void queue_test()
 
 void message_test()
 {
-	message_t message1, message2;
-	message_initialize(&message1);
-	message_initialize(&message2);
-	
-	message1.bytes_remaining = 0x1234;
-	message1.source_id = 0x567890AB;
-	strcpy(message1.payload, "Hello!");
+    message_t message1, message2;
+    message_initialize(&message1);
+    message_initialize(&message2);
 
-	message_pack(&message1);
+    message1.bytes_remaining = 0x1234;
+    message1.source_id = 0x567890AB;
+    strcpy(message1.payload, "Hello!");
 
-	strcpy(message2.message_string, message1.message_string);
+    message_pack(&message1);
 
-	message_unpack(&message2);
+    strcpy(message2.message_string, message1.message_string);
 
-	fprintf(stderr, "%x %x %s\n", message2.bytes_remaining, message2.source_id, message2.payload);
+    message_unpack(&message2);
+
+    fprintf(stderr, "%x %x %s\n", message2.bytes_remaining, message2.source_id, message2.payload);
 }
 
 int configure_callback(WINDOW * PH(window))

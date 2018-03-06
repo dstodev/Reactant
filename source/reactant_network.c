@@ -134,17 +134,17 @@ int discover_server(int port)
 
 int start_core_server(int port)
 {
-	message_t message;
-	
-	struct AES_ctx context;
-	const char * key = "01234567012345670123456701234567";	// 32 bytes
-	const char * iv = "0123456701234567";	// 16 bytes
-	
+    message_t message;
+
+    struct AES_ctx context;
+    const char * key = "01234567012345670123456701234567";  // 32 bytes
+    const char * iv = "0123456701234567";   // 16 bytes
+
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     int handle = 0;
     int client_size = sizeof(struct sockaddr);
 
-	char buffer[256];
+    char buffer[256];
     int bytes = 0;
 
     char channel[250];
@@ -172,74 +172,74 @@ int start_core_server(int port)
         return 1;
     }
 
-	while(1)
-	{
-		// Clear buffers
-		memset(buffer, 0, sizeof(buffer));
-		memset(channel, 0, sizeof(channel));
-		memset(payload, 0, sizeof(payload));
-		
-		// Wait for incoming connections
-		handle = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_size);
-		if (handle < 0)
-		{
-			fprintf(stderr, "%s\n", "Failed to accept incoming connection!");
-			close(sock);
-			return 1;
-		}
+    while(1)
+    {
+        // Clear buffers
+        memset(buffer, 0, sizeof(buffer));
+        memset(channel, 0, sizeof(channel));
+        memset(payload, 0, sizeof(payload));
 
-		// Read incoming message
-		bytes = read(handle, buffer, sizeof(buffer));
-		if (bytes != sizeof(buffer))
-		{
-			fprintf(stderr, "%s %d!\n", "Invalid initial read, rval:", bytes);
-			close(sock);
-			return 1;
-		}
+        // Wait for incoming connections
+        handle = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_size);
+        if (handle < 0)
+        {
+            fprintf(stderr, "%s\n", "Failed to accept incoming connection!");
+            close(sock);
+            return 1;
+        }
 
-		// Decrypt message (AES256)
-		AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-		AES_CBC_decrypt_buffer(&context, (uint8_t *) buffer, 256);
+        // Read incoming message
+        bytes = read(handle, buffer, sizeof(buffer));
+        if (bytes != sizeof(buffer))
+        {
+            fprintf(stderr, "%s %d!\n", "Invalid initial read, rval:", bytes);
+            close(sock);
+            return 1;
+        }
 
-		// Generate message struct from message
-		message_initialize(&message);
-		strcpy(message.message_string, buffer);
-		message_unpack(&message);
+        // Decrypt message (AES256)
+        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+        AES_CBC_decrypt_buffer(&context, (uint8_t *) buffer, 256);
 
-		switch (message.source_id)
-		{
-			case 0:
-				// Publish message
-				strcpy(channel, message.payload);
+        // Generate message struct from message
+        message_initialize(&message);
+        memcpy(message.message_string, buffer, 256);
+        message_unpack(&message);
 
-				// Read payload message
-				bytes = read(handle, buffer, sizeof(buffer));
-				if (bytes != sizeof(buffer))
-				{
-					fprintf(stderr, "%s %d!\n", "Invalid payload read, rval:", bytes);
-					close(sock);
-					return 1;
-				}
+        switch (message.source_id)
+        {
+            case 0:
+                // Publish message
+                strcpy(channel, message.payload);
 
-				// Decrypt message (AES256)
-				AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-				AES_CBC_decrypt_buffer(&context, (uint8_t *) buffer, 256);
+                // Read payload message
+                bytes = read(handle, buffer, sizeof(buffer));
+                if (bytes != sizeof(buffer))
+                {
+                    fprintf(stderr, "%s %d!\n", "Invalid payload read, rval:", bytes);
+                    close(sock);
+                    return 1;
+                }
 
-				// Generate message struct from message
-				message_initialize(&message);
-				strcpy(message.message_string, buffer);
-				message_unpack(&message);
+                // Decrypt message (AES256)
+                AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+                AES_CBC_decrypt_buffer(&context, (uint8_t *) buffer, 256);
 
-				strcpy(payload, message.payload);
+                // Generate message struct from message
+                message_initialize(&message);
+                memcpy(message.message_string, buffer, 256);
+                message_unpack(&message);
 
-				fprintf(stderr, "Publishing \"%s\" to \"%s\"\n", payload, channel);
-				
-				break;
-				
-			default:
-				// Subscribe message
-				;
-		}
+                strcpy(payload, message.payload);
+
+                fprintf(stderr, "Publishing \"%s\" to \"%s\"\n", payload, channel);
+
+                break;
+
+            default:
+                // Subscribe message
+                ;
+        }
     }
 
     return 0;
@@ -252,12 +252,12 @@ int start_node_client(core_t * core, char * ip, int port)
 
     if (core && ip)
     {
-		// Ignore SIGPIPE signals
-		signal(SIGPIPE, SIG_IGN);
-		
-		// Clear core struct
-		memset(core, 0, sizeof(*core));
-		
+        // Ignore SIGPIPE signals
+        signal(SIGPIPE, SIG_IGN);
+
+        // Clear core struct
+        memset(core, 0, sizeof(*core));
+
         server_addr.sin_family = AF_INET;   // IPv4
         server_addr.sin_port = htons(port); // Port
         inet_pton(AF_INET, ip, &server_addr.sin_addr);  // Convert string represenation of IP address to integer value
@@ -266,23 +266,23 @@ int start_node_client(core_t * core, char * ip, int port)
         // Connect to Core device
         if (connect(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
         {
-			// Connection failed
+            // Connection failed
             fprintf(stderr, "%s\n", "Could not connect to server!");
             return 1;
         }
         else
         {
-			// Connection succeeded
-			core->addr = calloc(1, sizeof(server_addr));
-			*core->addr = server_addr;
-			core->sock = sock;
-		}
+            // Connection succeeded
+            core->addr = calloc(1, sizeof(server_addr));
+            *core->addr = server_addr;
+            core->sock = sock;
+        }
     }
     else
     {
-		// Invalid parameters
-		return 1;
-	}
+        // Invalid parameters
+        return 1;
+    }
 
     return 0;
 }
@@ -300,132 +300,132 @@ int stop_node_client(core_t * core)
         // Close socket
         if(core->sock)
         {
-			close(core->sock);
-			core->sock = 0;
-		}
+            close(core->sock);
+            core->sock = 0;
+        }
     }
     else
     {
-		// Invalid parameters
-		return 1;
-	}
+        // Invalid parameters
+        return 1;
+    }
 
     return 0;
 }
 
 int publish(core_t * core, char * channel, char * payload)
 {
-	message_t message;
-	
-	struct AES_ctx context;
-	const char * key = "01234567012345670123456701234567";	// 32 bytes
-	const char * iv = "0123456701234567";	// 16 bytes
-	
-	if (core && channel && payload)
-	{
-		if (strlen(channel) >= 250)
-		{
-			fprintf(stderr, "%s\n", "Cannot publish to channel name of length 250 or greater!");
-			return 1;
-		}
-		
-		if (strlen(payload) >= 250)
-		{
-			// TODO: Allow arbitrary message size
-			fprintf(stderr, "%s\n", "Cannot publish message of length 250 or greater!");
-			return 1;
-		}
+    message_t message;
 
-		/*
-		 * Send channel designation message
-		 */
-		 
-		// Set up message
-		message_initialize(&message);
-		message.bytes_remaining = strlen(channel);	// Bytes Remaining
-		message.source_id = 0;	// Source ID = 0, ID irrelevant for publish
-		strcpy(message.payload, channel);	// Payload
-		
-		// Serialize message
-		message_pack(&message);
-		fprintf(stderr, "%x %x %s\n", message.bytes_remaining, message.source_id, message.payload);
+    struct AES_ctx context;
+    const char * key = "01234567012345670123456701234567";  // 32 bytes
+    const char * iv = "0123456701234567";   // 16 bytes
 
-		// Encrypt message (AES256)
-		AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-		AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+    if (core && channel && payload)
+    {
+        if (strlen(channel) >= 250)
+        {
+            fprintf(stderr, "%s\n", "Cannot publish to channel name of length 250 or greater!");
+            return 1;
+        }
 
-		// Send message
-		send_to_core(core, message.message_string, 256);
+        if (strlen(payload) >= 250)
+        {
+            // TODO: Allow arbitrary message size
+            fprintf(stderr, "%s\n", "Cannot publish message of length 250 or greater!");
+            return 1;
+        }
 
-		/*
-		 * Send payload message
-		 */
+        /*
+         * Send channel designation message
+         */
 
-		// Set up message
-		message_initialize(&message);
-		message.bytes_remaining = strlen(payload);
-		message.source_id = 0;
-		strcpy(message.payload, payload);
+        // Set up message
+        message_initialize(&message);
+        message.bytes_remaining = strlen(channel);  // Bytes Remaining
+        message.source_id = 0;  // Source ID = 0, ID irrelevant for publish
+        strcpy(message.payload, channel);   // Payload
 
-		// Serialize message
-		message_pack(&message);
+        // Serialize message
+        message_pack(&message);
+        fprintf(stderr, "%x %x %s\n", message.bytes_remaining, message.source_id, message.payload);
 
-		// Encrypt message (AES256)
-		AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-		AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+        // Encrypt message (AES256)
+        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+        AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, 256);
 
-		// Send message
-		send_to_core(core, message.message_string, 256);
-	}
-	else
-	{
-		// Invalid parameters
-		return 1;
-	}
-	
-	return 0;
+        // Send message
+        send_to_core(core, message.message_string, 256);
+
+        /*
+         * Send payload message
+         */
+
+        // Set up message
+        message_initialize(&message);
+        message.bytes_remaining = strlen(payload);
+        message.source_id = 0;
+        strcpy(message.payload, payload);
+
+        // Serialize message
+        message_pack(&message);
+
+        // Encrypt message (AES256)
+        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+        AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+
+        // Send message
+        send_to_core(core, message.message_string, 256);
+    }
+    else
+    {
+        // Invalid parameters
+        return 1;
+    }
+
+    return 0;
 }
 
 int subscribe(core_t * core, char * channel)
 {
-	return 0;
+    return 0;
 }
 
 static int send_to_core(core_t * core, char * message, int size)
 {
-	if (core && message)
-	{
-		if (core->sock)
-		{
-			if (write(core->sock, message, size) < 0)
-			{
-				switch (errno)
-				{
-					case EPIPE:
-						// Connection to core was lost
-						fprintf(stderr, "%s\n", "Connection to the Core has been lost!");
-						break;
-						
-					default:
-						// Unknown
-						fprintf(stderr, "%s\n", "An unknown error occurred while attempting to publish to the Core!");
-				}
-				
-				return 1;
-			}
-		}
-		else
-		{
-			// Connection to core was never established
-			fprintf(stderr, "%s\n", "Connection to the Core has not yet been established!");
-			return 1;
-		}
-	}
-	else
-	{
-		// Invalid parameters
-		return 1;
-	}
-	
-	return 0;
+    if (core && message)
+    {
+        if (core->sock)
+        {
+            if (write(core->sock, message, size) < 0)
+            {
+                switch (errno)
+                {
+                    case EPIPE:
+                        // Connection to core was lost
+                        fprintf(stderr, "%s\n", "Connection to the Core has been lost!");
+                        break;
+
+                    default:
+                        // Unknown
+                        fprintf(stderr, "%s\n", "An unknown error occurred while attempting to publish to the Core!");
+                }
+
+                return 1;
+            }
+        }
+        else
+        {
+            // Connection to core was never established
+            fprintf(stderr, "%s\n", "Connection to the Core has not yet been established!");
+            return 1;
+        }
+    }
+    else
+    {
+        // Invalid parameters
+        return 1;
+    }
+
+    return 0;
 }
