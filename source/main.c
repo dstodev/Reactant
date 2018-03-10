@@ -27,16 +27,8 @@ int test_callback(WINDOW * window);
 
 int main()
 {
-    /*core_t core;
-
-    start_node_client(&core, "10.103.1.42", 10112);
-
-    publish(&core, "chat1", "this is a test");
-
-    stop_node_client(&core);*/
-
-    core_test();
-    //node_test();
+    //core_test();
+    node_test();
 
     //spi_test();
     //i2c_test();
@@ -53,7 +45,10 @@ void node_test()
 {
     core_t core;
 
-    start_node_client(&core, "10.103.4.251", 10112);
+    start_node_client(&core, "192.168.1.102", 10112);
+
+    publish(&core, "chat1", "this is a test");
+
     stop_node_client(&core);
 }
 

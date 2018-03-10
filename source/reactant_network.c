@@ -370,9 +370,14 @@ int publish(core_t * core, char * channel, char * payload)
         // Serialize message
         message_pack(&message);
 
+        message_debug_hex(message.message_string);
+
         // Encrypt message (AES256)
         AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
         AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+
+        fprintf(stderr, "\n");
+        message_debug_hex(message.message_string);
 
         // Send message
         send_to_core(core, message.message_string, 256);
