@@ -211,7 +211,6 @@ int start_core_server(int port)
     int bytes = 0;
 
     char channel[250];
-    char payload[250];
 
     int rval = 0;
 
@@ -242,7 +241,6 @@ int start_core_server(int port)
         // Clear buffers
         memset(buffer, 0, sizeof(buffer));
         memset(channel, 0, sizeof(channel));
-        memset(payload, 0, sizeof(payload));
 
         // Wait for incoming connections
         handle = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_size);
@@ -295,9 +293,7 @@ int start_core_server(int port)
                 memcpy(message.message_string, buffer, 256);
                 message_unpack(&message);
 
-                strcpy(payload, message.payload);
-
-                fprintf(stderr, "Publishing \"%s\" to \"%s\"\n", payload, channel);
+                fprintf(stderr, "Publishing \"%s\" to \"%s\"\n", message.payload, channel);
 
                 // Find channel in table
                 rval = ht_search(&table, &search, channel);

@@ -244,8 +244,10 @@ int ht_search(hash_table_t * hash_table, hash_data_t * hash_data, void * key)
                 hash_data->value = position->value;
 
                 // Set _next pointer to null
-                hash_data->_next = 0;
+                // hash_data->_next = 0;    // Already null from previous memset
                 rval = SUCCESS;
+
+                break;
             }
             position = position->_next;
         }
