@@ -372,6 +372,7 @@ int start_core_server(int port)
                 // Channel doesn't yet exist in table, create it
                 {
                     channel_list = calloc(1, sizeof(channel_t));
+                    // TODO: Free the following allocated memory
                     channel_list->addresses = calloc(1, sizeof(struct sockaddr_in));
                     channel_list->addresses[0] = client_addr;
                     channel_list->size = 1;
@@ -384,7 +385,7 @@ int start_core_server(int port)
                 // Append address to list of addresses
                 {
                     channel_list = (channel_t *) search.value;
-                    channel_list->addresses = realloc(channel_list->addresses, (channel_list->size + 1) * sizeof(channel_t));
+                    channel_list->addresses = realloc(channel_list->addresses, (channel_list->size + 1) * sizeof(struct sockaddr_in));
                     channel_list->addresses[channel_list->size] = client_addr;
                     channel_list->size += 1;
                 }
