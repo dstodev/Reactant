@@ -33,7 +33,7 @@ typedef struct _channel_t
 {
     // char * name; // Don't need name, it's the key of containing hash_data_t
     int size;
-    unsigned int * addresses;
+    struct sockaddr_in * addresses;
 
 } channel_t;
 

@@ -17,12 +17,12 @@ static int _send_to_core(core_t * core, char * message, int size)
                 {
                     case EPIPE:
                         // Connection to core was lost
-                        fprintf(stderr, "%s\n", "Connection to the Core has been lost!");
+                        fprintf(stderr, "Connection to the Core has been lost!\n");
                         break;
 
                     default:
                         // Unknown
-                        fprintf(stderr, "%s\n", "An unknown error occurred while attempting to publish to the Core!");
+                        fprintf(stderr, "An unknown error occurred while attempting to publish to the Core!\n");
                 }
 
                 return 1;
@@ -31,8 +31,57 @@ static int _send_to_core(core_t * core, char * message, int size)
         else
         {
             // Connection to core was never established
-            fprintf(stderr, "%s\n", "Connection to the Core has not yet been established!");
+            fprintf(stderr, "Connection to the Core has not yet been established!\n");
             return 1;
+        }
+    }
+    else
+    {
+        // Invalid parameters
+        return 1;
+    }
+
+    return 0;
+}
+
+static int _send_to_node(struct sockaddr_in addr, char * message, int size)
+{
+    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    if (message)
+    {
+        // Ignore SIGPIPE signals
+        signal(SIGPIPE, SIG_IGN);
+
+        // Connect to Node device
+        if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0)
+        // Connection failed
+        {
+            fprintf(stderr, "Could not connect to node [%d]!\n", addr.sin_addr.s_addr);
+            return 1;
+        }
+        else
+        // Connection succeeded
+        {
+            if (write(sock, message, size) < 0)
+            {
+                switch (errno)
+                {
+                    case EPIPE:
+                        // Connection to node was lost
+                        fprintf(stderr, "Connection to Node [%d] has been lost!\n", addr.sin_addr.s_addr);
+                        break;
+
+                    default:
+                        // Unknown
+                        fprintf(stderr, "An unknown error occurred while attempting to write to Node [%d]!\n", addr.sin_addr.s_addr);
+                }
+
+                close(sock);
+                return 1;
+            }
+
+            close(sock);
         }
     }
     else
@@ -191,13 +240,15 @@ int discover_server(int port)
 
 int start_core_server(int port)
 {
+    int rval;
     message_t message;
 
     hash_table_t table;
-    ht_construct(&table, TABLE_SIZE, sizeof(char *), sizeof(channel_t *), &_hash_channel, &_compare_channel);
+    ht_construct(&table, TABLE_SIZE, sizeof(char *), sizeof(channel_t), &_hash_channel, &_compare_channel);
     //           table   10          key size        value size           hash function   compare function
 
     hash_data_t search;
+    channel_t  * channel_list;
 
     struct AES_ctx context;
     const char * key = "01234567012345670123456701234567";  // Test key (32 bytes)
@@ -211,8 +262,6 @@ int start_core_server(int port)
     int bytes = 0;
 
     char channel[250];
-
-    int rval = 0;
 
     struct sockaddr_in server_addr, client_addr;
     server_addr.sin_family = AF_INET;
@@ -255,59 +304,94 @@ int start_core_server(int port)
         bytes = read(handle, buffer, sizeof(buffer));
         if (bytes != sizeof(buffer))
         {
-            fprintf(stderr, "Invalid initial read, rval: %d!\n", bytes);
+            fprintf(stderr, "Invalid initial read, rval: [%d]!\n", bytes);
             close(sock);
             return 1;
         }
 
-        // Decrypt message (AES256)
-        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-        AES_CBC_decrypt_buffer(&context, (uint8_t *) buffer, 256);
-
-        // Generate message struct from message
         message_initialize(&message);
         memcpy(message.message_string, buffer, 256);
+
+        // Decrypt message (AES256)
+        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+        AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+
+        // Generate message struct from message
         message_unpack(&message);
 
         switch (message.source_id)
         {
             case 0:
-                // Publish message
+                // Message is a "Publish" message
+
                 strcpy(channel, message.payload);
 
                 // Read payload message
                 bytes = read(handle, buffer, sizeof(buffer));
                 if (bytes != sizeof(buffer))
                 {
-                    fprintf(stderr, "%s %d!\n", "Invalid payload read, rval:", bytes);
+                    fprintf(stderr, "Invalid payload read, rval: [%d]!\n", bytes);
                     close(sock);
                     return 1;
                 }
 
-                // Decrypt message (AES256)
-                AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-                AES_CBC_decrypt_buffer(&context, (uint8_t *) buffer, 256);
-
-                // Generate message struct from message
                 message_initialize(&message);
                 memcpy(message.message_string, buffer, 256);
+
+                // Decrypt message (AES256)
+                AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+                AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+
+                // Generate message struct from message
                 message_unpack(&message);
 
                 fprintf(stderr, "Publishing \"%s\" to \"%s\"\n", message.payload, channel);
 
                 // Find channel in table
-                rval = ht_search(&table, &search, channel);
-                if (rval == HT_DNE)
+                if (ht_search(&table, &search, channel) == HT_DNE)
+                // Channel hasn't been created yet; no devices are subscribed to the target channel
                 {
                     fprintf(stderr, "Could not find \"%s\" in table!\n", channel);
                 }
-
+                else
+                // Relay message to all devices subscribed to the target channel
+                {
+                    channel_list = (channel_t *) search.value;
+                    for (int i = 0; i < channel_list->size; ++i)
+                    {
+                        _send_to_node(channel_list->addresses[i], buffer, 256);
+                    }
+                }
 
                 break;
 
             default:
-                // Subscribe message
-                ;
+                // Message is a "Subscribe" message
+
+                if ((rval = ht_search(&table, &search, channel)) == HT_DNE)
+                // Channel doesn't yet exist in table, create it
+                {
+                    channel_list = calloc(1, sizeof(channel_t));
+                    channel_list->addresses = calloc(1, sizeof(struct sockaddr_in));
+                    channel_list->addresses[0] = client_addr;
+                    channel_list->size = 1;
+
+                    ht_insert(&table, channel, channel_list);
+
+                    free(channel_list); // TODO: Don't do this?
+                }
+                else if (rval == SUCCESS)
+                // Append address to list of addresses
+                {
+                    channel_list = (channel_t *) search.value;
+                    channel_list->addresses = realloc(channel_list->addresses, channel_list->size + 1);
+                    channel_list->addresses[channel_list->size] = client_addr;
+                    channel_list->size += 1;
+                }
+                else
+                {
+                    fprintf(stderr, "An unknown error occurred when handling Subscription message: [%d]!\n", rval);
+                }
         }
     }
 
