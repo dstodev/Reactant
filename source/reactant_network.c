@@ -384,7 +384,7 @@ int start_core_server(int port)
                 // Append address to list of addresses
                 {
                     channel_list = (channel_t *) search.value;
-                    channel_list->addresses = realloc(channel_list->addresses, channel_list->size + 1);
+                    channel_list->addresses = realloc(channel_list->addresses, (channel_list->size + 1) * sizeof(channel_t));
                     channel_list->addresses[channel_list->size] = client_addr;
                     channel_list->size += 1;
                 }
