@@ -20,14 +20,22 @@
 #define S_MUL 1000000
 
 extern const int LISTEN_QUEUE;
+extern const int TABLE_SIZE;
 
 typedef struct _core_t
 {
     struct sockaddr_in * addr;
     int sock;
 
-
 } core_t;
+
+typedef struct _channel_t
+{
+    // char * name; // Don't need name, it's the key of containing hash_data_t
+    int size;
+    unsigned int * addresses;
+
+} channel_t;
 
 unsigned long get_interface();
 int start_discovery_server(int port);

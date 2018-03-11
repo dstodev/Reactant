@@ -113,13 +113,14 @@ typedef enum _ht_status_t
 } ht_status_t;
 
 // Hash table functions
-int ht_construct(hash_table_t *, uint32_t, uint32_t, uint32_t, uint32_t (*)(void *), uint8_t (*)(void *, void *));
-int ht_destruct(hash_table_t *);
+int ht_construct(hash_table_t * hash_table, uint32_t size, uint32_t key_size, uint32_t value_size, \
+                 uint32_t (*hash)(void *), uint8_t (*compare)(void *, void *));
+int ht_destruct(hash_table_t * hash_table);
 
-int ht_search(hash_table_t *, hash_data_t *, void *);
-int ht_insert(hash_table_t *, void *, void *);
-int ht_remove(hash_table_t *, void *);
-int ht_traverse(hash_table_t *, void (*)(void *, void *));
+int ht_search(hash_table_t * hash_table, hash_data_t * hash_data, void * key);
+int ht_insert(hash_table_t * hash_table, void * key, void * value);
+int ht_remove(hash_table_t * hash_table, void * key);
+int ht_traverse(hash_table_t * hash_table, void (*visit)(void *, void *));
 
 
 /*******************************************************************************
@@ -186,9 +187,9 @@ typedef struct _message_t
 {
     short bytes_remaining;  // 2 bytes
     int source_id;          // 4 bytes
-    char payload[250];    	// 250 bytes (where the last byte must always be zero)
+    char payload[250];      // 250 bytes (where the last byte must always be zero)
 
-    char message_string[256];	// Full message, built from components
+    char message_string[256];   // Full message, built from components
 
 } message_t;
 

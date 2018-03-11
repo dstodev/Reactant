@@ -2,10 +2,67 @@
 
 // Global constant definitions
 const int LISTEN_QUEUE = 16;
+const int TABLE_SIZE = 10;
 
 // Private helper functions
-static int send_to_core(core_t * core, char * message, int size);
+static int _send_to_core(core_t * core, char * message, int size)
+{
+    if (core && message)
+    {
+        if (core->sock)
+        {
+            if (write(core->sock, message, size) < 0)
+            {
+                switch (errno)
+                {
+                    case EPIPE:
+                        // Connection to core was lost
+                        fprintf(stderr, "%s\n", "Connection to the Core has been lost!");
+                        break;
 
+                    default:
+                        // Unknown
+                        fprintf(stderr, "%s\n", "An unknown error occurred while attempting to publish to the Core!");
+                }
+
+                return 1;
+            }
+        }
+        else
+        {
+            // Connection to core was never established
+            fprintf(stderr, "%s\n", "Connection to the Core has not yet been established!");
+            return 1;
+        }
+    }
+    else
+    {
+        // Invalid parameters
+        return 1;
+    }
+
+    return 0;
+}
+
+static uint32_t _hash_channel(void * name)
+{
+    char * str = (char *) name;
+    int hash = 0;
+
+    for (int i = 0; i < strlen(str); ++i)
+    {
+        hash += str[i];
+        hash ^= str[i];
+    }
+
+    return (hash % 10);
+
+}
+
+static uint8_t _compare_channel(void * lhs, void * rhs)
+{
+    return (strcmp((char *) lhs, (char *) rhs) == 0);
+}
 
 unsigned long get_interface()
 {
@@ -136,9 +193,15 @@ int start_core_server(int port)
 {
     message_t message;
 
+    hash_table_t table;
+    ht_construct(&table, TABLE_SIZE, sizeof(char *), sizeof(channel_t *), &_hash_channel, &_compare_channel);
+    //           table   10          key size        value size           hash function   compare function
+
+    hash_data_t search;
+
     struct AES_ctx context;
-    const char * key = "01234567012345670123456701234567";  // 32 bytes
-    const char * iv = "0123456701234567";   // 16 bytes
+    const char * key = "01234567012345670123456701234567";  // Test key (32 bytes)
+    const char * iv = "0123456701234567";   // Test IV (16 bytes)
 
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     int handle = 0;
@@ -150,6 +213,8 @@ int start_core_server(int port)
     char channel[250];
     char payload[250];
 
+    int rval = 0;
+
     struct sockaddr_in server_addr, client_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons((uint16_t) port);
@@ -159,7 +224,7 @@ int start_core_server(int port)
     // Bind server socket to the given port
     if (bind(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
     {
-        fprintf(stderr, "%s %d:%d!\n", "Could not bind to", ntohl(server_addr.sin_addr.s_addr), ntohs(port));
+        fprintf(stderr, "Could not bind to %d:%d!\n", ntohl(server_addr.sin_addr.s_addr), ntohs(port));
         close(sock);
         return 1;
     }
@@ -167,7 +232,7 @@ int start_core_server(int port)
     // Start listening on the provided port
     if (listen(sock, LISTEN_QUEUE) < 0)
     {
-        fprintf(stderr, "%s\n", "Could not listen for incoming connections!");
+        fprintf(stderr, "Could not listen for incoming connections!\n");
         close(sock);
         return 1;
     }
@@ -183,7 +248,7 @@ int start_core_server(int port)
         handle = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_size);
         if (handle < 0)
         {
-            fprintf(stderr, "%s\n", "Failed to accept incoming connection!");
+            fprintf(stderr, "Failed to accept incoming connection!\n");
             close(sock);
             return 1;
         }
@@ -192,7 +257,7 @@ int start_core_server(int port)
         bytes = read(handle, buffer, sizeof(buffer));
         if (bytes != sizeof(buffer))
         {
-            fprintf(stderr, "%s %d!\n", "Invalid initial read, rval:", bytes);
+            fprintf(stderr, "Invalid initial read, rval: %d!\n", bytes);
             close(sock);
             return 1;
         }
@@ -234,6 +299,14 @@ int start_core_server(int port)
 
                 fprintf(stderr, "Publishing \"%s\" to \"%s\"\n", payload, channel);
 
+                // Find channel in table
+                rval = ht_search(&table, &search, channel);
+                if (rval == HT_DNE)
+                {
+                    fprintf(stderr, "Could not find \"%s\" in table!\n", channel);
+                }
+
+
                 break;
 
             default:
@@ -267,7 +340,7 @@ int start_node_client(core_t * core, char * ip, int port)
         if (connect(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
         {
             // Connection failed
-            fprintf(stderr, "%s\n", "Could not connect to server!");
+            fprintf(stderr, "Could not connect to server!\n");
             return 1;
         }
         else
@@ -325,14 +398,14 @@ int publish(core_t * core, char * channel, char * payload)
     {
         if (strlen(channel) >= 250)
         {
-            fprintf(stderr, "%s\n", "Cannot publish to channel name of length 250 or greater!");
+            fprintf(stderr, "Cannot publish to channel name of length 250 or greater!\n");
             return 1;
         }
 
         if (strlen(payload) >= 250)
         {
             // TODO: Allow arbitrary message size
-            fprintf(stderr, "%s\n", "Cannot publish message of length 250 or greater!");
+            fprintf(stderr, "Cannot publish message of length 250 or greater!\n");
             return 1;
         }
 
@@ -355,7 +428,7 @@ int publish(core_t * core, char * channel, char * payload)
         AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, 256);
 
         // Send message
-        send_to_core(core, message.message_string, 256);
+        _send_to_core(core, message.message_string, 256);
 
         /*
          * Send payload message
@@ -380,7 +453,7 @@ int publish(core_t * core, char * channel, char * payload)
         message_debug_hex(message.message_string);
 
         // Send message
-        send_to_core(core, message.message_string, 256);
+        _send_to_core(core, message.message_string, 256);
     }
     else
     {
@@ -393,44 +466,5 @@ int publish(core_t * core, char * channel, char * payload)
 
 int subscribe(core_t * core, char * channel)
 {
-    return 0;
-}
-
-static int send_to_core(core_t * core, char * message, int size)
-{
-    if (core && message)
-    {
-        if (core->sock)
-        {
-            if (write(core->sock, message, size) < 0)
-            {
-                switch (errno)
-                {
-                    case EPIPE:
-                        // Connection to core was lost
-                        fprintf(stderr, "%s\n", "Connection to the Core has been lost!");
-                        break;
-
-                    default:
-                        // Unknown
-                        fprintf(stderr, "%s\n", "An unknown error occurred while attempting to publish to the Core!");
-                }
-
-                return 1;
-            }
-        }
-        else
-        {
-            // Connection to core was never established
-            fprintf(stderr, "%s\n", "Connection to the Core has not yet been established!");
-            return 1;
-        }
-    }
-    else
-    {
-        // Invalid parameters
-        return 1;
-    }
-
     return 0;
 }

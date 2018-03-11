@@ -9,7 +9,7 @@
 
 // #############################################################################
 // #                                                                           #
-// #    General		                                                           #
+// #    General                                                                #
 // #                                                                           #
 // #############################################################################
 /*******************************************************************************
@@ -18,7 +18,7 @@
  ******************************************************************************/
 int digits(int i, int base)
 {
-	return (i ? (int) (log((double) (i < 0 ? -1 * i : i)) / log(base)) + 1 : 1);
+    return (i ? (int) (log((double) (i < 0 ? -1 * i : i)) / log(base)) + 1 : 1);
 }
 
 // #############################################################################
@@ -120,8 +120,8 @@ char * _ht_status_message[] =
  *  Description:    Acts as the constructor for a hash table object, fills the
  *                  given pointer with the new hash table object
  ******************************************************************************/
-int ht_construct(hash_table_t * hash_table, uint32_t size, uint32_t key_size, \
-uint32_t value_size, uint32_t (*hash)(void *), uint8_t (*compare)(void *, void *))
+int ht_construct(hash_table_t * hash_table, uint32_t size, uint32_t key_size, uint32_t value_size, \
+                 uint32_t (*hash)(void *), uint8_t (*compare)(void *, void *))
 {
     // If all given information is valid
     if(hash_table && hash && compare)
@@ -224,7 +224,7 @@ int ht_search(hash_table_t * hash_table, hash_data_t * hash_data, void * key)
     int rval = HT_DNE;
 
     // If all given information is valid
-    if(hash_table && hash_data && hash_table && key)
+    if (hash_table && hash_data && hash_table && key)
     {
         // Clear current hash data
         memset(hash_data, 0, sizeof(hash_data_t));
@@ -234,7 +234,7 @@ int ht_search(hash_table_t * hash_table, hash_data_t * hash_data, void * key)
         position = hash_table->_array[key_index];
 
         // While there are still data objects at this index
-        while(position)
+        while (position)
         {
             // Check if the hash data object at the current position matches the given key
             if(hash_table->_compare(position->key, key))
@@ -270,10 +270,10 @@ int ht_insert(hash_table_t * hash_table, void * key, void * value)
     hash_data_t search;
 
     // If all given information is valid
-    if(hash_table && key && value)
+    if (hash_table && key && value)
     {
         // Ensure no duplicate keys are already in the table
-        if(ht_search(hash_table, &search, key) == SUCCESS)
+        if (ht_search(hash_table, &search, key) == SUCCESS)
         {
             return HT_DUPLICATE;
         }
@@ -283,7 +283,7 @@ int ht_insert(hash_table_t * hash_table, void * key, void * value)
         position = hash_table->_array[key_index];
 
         // If there is nothing at this index
-        if(position == 0)
+        if (position == 0)
         {
             hash_table->_array[key_index] = calloc(1, sizeof(hash_data_t));
 
@@ -292,7 +292,7 @@ int ht_insert(hash_table_t * hash_table, void * key, void * value)
         else
         {
             // Find first null location in the linked list at this index
-            while(position->_next)
+            while (position->_next)
             {
                 position = position->_next;
             }
@@ -326,7 +326,67 @@ int ht_insert(hash_table_t * hash_table, void * key, void * value)
  ******************************************************************************/
 int ht_remove(hash_table_t * hash_table, void * key)
 {
-    return UNKNOWN;
+    uint32_t key_index;
+    hash_data_t * position, * trail = 0;
+    char found = 0;
+
+    // If all given information is valid
+    if (hash_table && key)
+    {
+        // Find where the target should be based on its key
+        key_index = hash_table->_hash(key);
+        position = hash_table->_array[key_index];
+
+        // If there is nothing at this index
+        if (position == 0)
+        {
+            return HT_DNE;
+        }
+        else
+        {
+            // Find target object
+            while (position)
+            {
+                if (hash_table->_compare(position->key, key))
+                {
+                    found = 1;
+
+                    // Remove object
+                    if (!trail)
+                    {
+                        // If element is first in linked list
+                        hash_table->_array[key_index] = position->_next;
+                    }
+                    else
+                    {
+                        // If element is in middle of linked list
+                        trail->_next = position->_next;
+                    }
+
+                    free(position->key);
+                    free(position->value);
+
+                    break;
+                }
+                else
+                {
+                    trail = position;
+                    position = position->_next;
+                }
+            }
+
+            if (!found)
+            {
+                return HT_DNE;
+            }
+        }
+    }
+    else
+    {
+        return ARGUMENT;
+    }
+
+    return SUCCESS;
 }
 
 /*******************************************************************************
@@ -340,17 +400,17 @@ int ht_traverse(hash_table_t * hash_table, void (*visit)(void *, void *))
     hash_data_t * position;
 
     // If all given information is valid
-    if(hash_table && visit)
+    if (hash_table && visit)
     {
-        for(i = 0; i < hash_table->size; ++i)
+        for (i = 0; i < hash_table->size; ++i)
         {
             // Set position to first hash data object in linked list
             position = hash_table->_array[i];
 
-            if(position) debug_output("%s%d\n", "Index: ", i);
+            if (position) debug_output("%s%d\n", "Index: ", i);
 
             // While there are still data objects to visit
-            while(position)
+            while (position)
             {
                 // Give information to visitor function
                 visit(position->key, position->value);
@@ -387,7 +447,7 @@ char * _queue_status_message[] =
  ******************************************************************************/
 int queue_construct(queue_t * queue, size_t capacity)
 {
-    if(queue)
+    if (queue)
     {
         queue->queue = malloc(sizeof(void *) * capacity);
         queue->capacity = capacity;
@@ -624,36 +684,36 @@ int message_initialize(message_t * message)
  ******************************************************************************/
 int message_pack(message_t * message)
 {
-	int rval = SUCCESS;
+    int rval = SUCCESS;
 
-	if (message)
-	{
-		// Clear field to fill
-		memset(message->message_string, 0, sizeof(message->message_string));
-		
-		// Convert bytes_remaining field (short, 2 bytes) to string
-		for (int i = 0; i < 2; ++i)
-		{
-			//bytes_remaining[i] |= CAPTURE_BYTE(message->bytes_remaining, sizeof(bytes_remaining) - 2 - i);
-			message->message_string[i] = CAPTURE_BYTE(message->bytes_remaining, 1 - i);
-		}
+    if (message)
+    {
+        // Clear field to fill
+        memset(message->message_string, 0, sizeof(message->message_string));
 
-		// Convert source_id field (int, 4 bytes) to string
-		for (int i = 0; i < 4; ++i)
-		{
-			//source_id[i] |= CAPTURE_BYTE(message->source_id, sizeof(source_id) - 2 - i);
-			message->message_string[i + 2] = CAPTURE_BYTE(message->source_id, 3 - i);
-		}
+        // Convert bytes_remaining field (short, 2 bytes) to string
+        for (int i = 0; i < 2; ++i)
+        {
+            //bytes_remaining[i] |= CAPTURE_BYTE(message->bytes_remaining, sizeof(bytes_remaining) - 2 - i);
+            message->message_string[i] = CAPTURE_BYTE(message->bytes_remaining, 1 - i);
+        }
 
-		// Append payload to message string
-		strcat(message->message_string + 6, message->payload);
-	}
-	else
-	{
-		rval = ARGUMENT;
-	}
+        // Convert source_id field (int, 4 bytes) to string
+        for (int i = 0; i < 4; ++i)
+        {
+            //source_id[i] |= CAPTURE_BYTE(message->source_id, sizeof(source_id) - 2 - i);
+            message->message_string[i + 2] = CAPTURE_BYTE(message->source_id, 3 - i);
+        }
 
-	return rval;
+        // Append payload to message string
+        strcat(message->message_string + 6, message->payload);
+    }
+    else
+    {
+        rval = ARGUMENT;
+    }
+
+    return rval;
 }
 
 /*******************************************************************************
@@ -662,64 +722,64 @@ int message_pack(message_t * message)
  ******************************************************************************/
 int message_unpack(message_t * message)
 {
-	int rval = SUCCESS;
+    int rval = SUCCESS;
 
-	if (message)
-	{
-		// Clear fields to fill
-		message->bytes_remaining = 0;
-		message->source_id = 0;
-		memset(message->payload, 0, sizeof(message->payload));
-		
-		// Get bytes_remaining field
-		for (int i = 0; i < 2; ++i)
-		{
-			message->bytes_remaining |= message->message_string[i] << (8 * (1 - i));
-		}
-		
-		// Get source_id field
-		for (int i = 2; i < 6; ++i)
-		{
-			message->source_id |= message->message_string[i] << (8 * (3 - (i - 2)));
-		}
-		
-		// Get payload
-		for (int i = 6; i < 256; ++i)
-		{
-			message->payload[i - 6] = message->message_string[i];
-		}
-	}
-	else
-	{
-		rval = ARGUMENT;
-	}
+    if (message)
+    {
+        // Clear fields to fill
+        message->bytes_remaining = 0;
+        message->source_id = 0;
+        memset(message->payload, 0, sizeof(message->payload));
 
-	return rval;
+        // Get bytes_remaining field
+        for (int i = 0; i < 2; ++i)
+        {
+            message->bytes_remaining |= message->message_string[i] << (8 * (1 - i));
+        }
+
+        // Get source_id field
+        for (int i = 2; i < 6; ++i)
+        {
+            message->source_id |= message->message_string[i] << (8 * (3 - (i - 2)));
+        }
+
+        // Get payload
+        for (int i = 6; i < 256; ++i)
+        {
+            message->payload[i - 6] = message->message_string[i];
+        }
+    }
+    else
+    {
+        rval = ARGUMENT;
+    }
+
+    return rval;
 }
 
 int message_debug_hex(char * message)
 {
-	const int cols = 16;
-	const int len = 256;
-	
-	if (message)
-	{
-		fprintf(stderr, "%4c", ' ');
-		for (int i = 0; i < cols; ++i)
-		{
-			fprintf(stderr, "%-2x ", i);
-		}
-		fprintf(stderr, "\n");
-		for (int i = 0; i < len / cols + (len % cols ? 1 : 0); ++i)
-		{
-			fprintf(stderr, "%2x: ", i);
-			for (int j = 0; j < cols && i * cols + j < len; ++j)
-			{
-				fprintf(stderr, "%02x ", message[i * cols + j]);
-			}
-			fprintf(stderr, "\n");
-		}
-	}
+    const int cols = 16;
+    const int len = 256;
 
-	return 0;
+    if (message)
+    {
+        fprintf(stderr, "%4c", ' ');
+        for (int i = 0; i < cols; ++i)
+        {
+            fprintf(stderr, "%-2x ", i);
+        }
+        fprintf(stderr, "\n");
+        for (int i = 0; i < len / cols + (len % cols ? 1 : 0); ++i)
+        {
+            fprintf(stderr, "%2x: ", i);
+            for (int j = 0; j < cols && i * cols + j < len; ++j)
+            {
+                fprintf(stderr, "%02x ", message[i * cols + j]);
+            }
+            fprintf(stderr, "\n");
+        }
+    }
+
+    return 0;
 }
