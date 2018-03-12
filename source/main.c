@@ -27,11 +27,13 @@ int test_callback(WINDOW * window);
 
 int main()
 {
-    //core_test();
-    node_test();
+    //ui_test();
 
-    //spi_test();
-    //i2c_test();
+    //core_test();
+    //node_test();
+
+    spi_test();
+    i2c_test();
 
     return 0;
 }

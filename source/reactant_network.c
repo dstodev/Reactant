@@ -319,12 +319,12 @@ int start_core_server(int port)
         // Generate message struct from message
         message_unpack(&message);
 
+        strcpy(channel, message.payload);
+
         switch (message.source_id)
         {
             case 0:
                 // Message is a "Publish" message
-
-                strcpy(channel, message.payload);
 
                 // Read payload message
                 bytes = read(handle, buffer, sizeof(buffer));
