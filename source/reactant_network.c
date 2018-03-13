@@ -248,7 +248,7 @@ int start_core_server(int port)
     //           table   10          key size        value size           hash function   compare function
 
     hash_data_t search;
-    channel_t  * channel_list;
+    channel_t  * channel_target;
 
     struct AES_ctx context;
     const char * key = "01234567012345670123456701234567";  // Test key (32 bytes)
@@ -359,10 +359,10 @@ int start_core_server(int port)
             else
             // Relay message to all devices subscribed to the target channel
             {
-                channel_list = (channel_t *) search.value;
-                for (int i = 0; i < channel_list->size; ++i)
+                channel_target = (channel_t *) search.value;
+                for (int i = 0; i < channel_target->size; ++i)
                 {
-                    _send_to_node(channel_list->addresses[i], buffer, 256);
+                    _send_to_node(channel_target->addresses[i], buffer, 256);
                 }
             }
             break;
@@ -381,16 +381,16 @@ int start_core_server(int port)
                 if (!mode)
                 // Subscribe
                 {
-                    channel_list = calloc(1, sizeof(channel_t));
-                    channel_list->size = 1;
+                    channel_target = calloc(1, sizeof(channel_t));
+                    channel_target->size = 1;
                     // TODO: Free the following allocated memory
-                    channel_list->addresses = calloc(1, sizeof(struct sockaddr_in));
-                    channel_list->ids = calloc(1, sizeof(unsigned int));
-                    channel_list->addresses[0] = client_addr;
-                    channel_list->ids[0] = message.source_id;
+                    channel_target->addresses = calloc(1, sizeof(struct sockaddr_in));
+                    channel_target->ids = calloc(1, sizeof(unsigned int));
+                    channel_target->addresses[0] = client_addr;
+                    channel_target->ids[0] = message.source_id;
 
-                    ht_insert(&table, channel, channel_list);
-                    free(channel_list); // TODO: Don't do this?
+                    ht_insert(&table, channel, channel_target);
+                    free(channel_target); // TODO: Don't do this?
                 }
                 else
                 // Unsubscribe
@@ -404,44 +404,46 @@ int start_core_server(int port)
                 if(!mode)
                 // Subscribe
                 {
-                    channel_list = (channel_t *) search.value;
-                    channel_list->addresses = realloc(channel_list->addresses, (channel_list->size + 1) * sizeof(struct sockaddr_in));
-                    channel_list->ids = realloc(channel_list->ids, (channel_list->size + 1) * sizeof(unsigned int));
-                    channel_list->addresses[channel_list->size] = client_addr;
-                    channel_list->ids[channel_list->size] = message.source_id;
-                    channel_list->size += 1;
+                    channel_target = (channel_t *) search.value;
+                    channel_target->addresses = realloc(channel_target->addresses, (channel_target->size + 1) * sizeof(struct sockaddr_in));
+                    channel_target->ids = realloc(channel_target->ids, (channel_target->size + 1) * sizeof(unsigned int));
+                    channel_target->addresses[channel_target->size] = client_addr;
+                    channel_target->ids[channel_target->size] = message.source_id;
+                    channel_target->size += 1;
                 }
                 else
                 // Unsubscribe
                 {
-                    channel_list = (channel_t *) search.value;
+                    channel_target = (channel_t *) search.value;
 
                     // Find index of subscribed device and remove it from array
-                    for (int i = 0; i < channel_list->size; ++i)
+                    for (int i = 0; i < channel_target->size; ++i)
                     {
-                        if (channel_list->ids[i] == message.source_id)
+                        if (channel_target->ids[i] == message.source_id)
                         {
-                            if (channel_list->size == 1)
+                            if (channel_target->size == 1)
                             // Device is the only subscribed device
                             {
-                                free(channel_list->addresses);
-                                free(channel_list->ids);
+                                free(channel_target->addresses);
+                                free(channel_target->ids);
                                 ht_remove(&table, channel);
                             }
                             else
                             // Device is not the only subscribed device
                             {
                                 // Patch array
-                                for (int j = i; j < channel_list->size - 1; ++j)
+                                for (int j = i; j < channel_target->size - 1; ++j)
                                 {
-                                    channel_list->addresses[i] = channel_list->addresses[i + 1];
-                                    channel_list->ids[i] = channel_list->ids[i + 1];
+                                    channel_target->addresses[i] = channel_target->addresses[i + 1];
+                                    channel_target->ids[i] = channel_target->ids[i + 1];
                                 }
 
                                 // Free element
-                                channel_list->addresses = realloc(channel_list->addresses, (channel_list->size - 1) * sizeof(struct sockaddr_in));
-                                channel_list->ids = realloc(channel_list->ids, (channel_list->size - 1) * sizeof(unsigned int));
+                                channel_target->addresses = realloc(channel_target->addresses, (channel_target->size - 1) * sizeof(struct sockaddr_in));
+                                channel_target->ids = realloc(channel_target->ids, (channel_target->size - 1) * sizeof(unsigned int));
                             }
+
+                            break;
                         }
                     }
                 }
