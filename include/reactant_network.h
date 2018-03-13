@@ -26,6 +26,7 @@ typedef struct _core_t
 {
     struct sockaddr_in * addr;
     int sock;
+    int node_id;
 
 } core_t;
 
@@ -42,7 +43,7 @@ unsigned long get_interface();
 int start_discovery_server(int port);
 int discover_server(int port);
 int start_core_server(int port);
-int start_node_client(core_t * core, char * ip, int port);
+int start_node_client(core_t * core, unsigned int id, char * ip, int port);
 int stop_node_client(core_t * core);
 
 int publish(core_t * core, char * channel, char * message);

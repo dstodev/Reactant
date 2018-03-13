@@ -47,7 +47,7 @@ void node_test()
 {
     core_t core;
 
-    start_node_client(&core, "192.168.1.102", 10112);
+    start_node_client(&core, 0x741, "192.168.1.102", 10112);
 
     publish(&core, "chat1", "this is a test");
 

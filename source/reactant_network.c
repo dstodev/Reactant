@@ -461,7 +461,7 @@ int start_core_server(int port)
     return 0;
 }
 
-int start_node_client(core_t * core, char * ip, int port)
+int start_node_client(core_t * core, unsigned int id, char * ip, int port)
 {
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     struct sockaddr_in server_addr;
@@ -492,6 +492,7 @@ int start_node_client(core_t * core, char * ip, int port)
             core->addr = calloc(1, sizeof(server_addr));
             *core->addr = server_addr;
             core->sock = sock;
+            core->node_id = id;
         }
     }
     else
@@ -630,13 +631,13 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
         // Set up message
         message_initialize(&message);
         message.bytes_remaining = strlen(channel);  // Bytes Remaining
-        message.source_id = 0x741;  // TODO: Unique device ID generation & storage
-        message.source_id &= 0x7FFF;    // Force ID MSB to 0
+        message.source_id = core->node_id;  // Node device ID
+        message.source_id &= 0x7FFF;    // Force MSB of ID to 0
         strcpy(message.payload, channel);   // Payload
 
         // Serialize message
         message_pack(&message);
-        fprintf(stderr, "%x %x %s\n", message.bytes_remaining, message.source_id, message.payload);
+        //fprintf(stderr, "%x %x %s\n", message.bytes_remaining, message.source_id, message.payload);
 
         // Encrypt message (AES256)
         AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
