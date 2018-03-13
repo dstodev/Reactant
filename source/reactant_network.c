@@ -262,6 +262,7 @@ int start_core_server(int port)
     int bytes = 0;
 
     char channel[250];
+    char mode;
 
     struct sockaddr_in server_addr, client_addr;
     server_addr.sin_family = AF_INET;
@@ -321,78 +322,86 @@ int start_core_server(int port)
 
         strcpy(channel, message.payload);
 
-        switch (message.source_id)
+        switch (message.source_id & 0x7FFF) // Ignore MSB of source ID field
         {
-            case 0:
-                // Message is a "Publish" message
+        case 0:
+        // Message is a "Publish" message
 
-                // Read payload message
-                bytes = read(handle, buffer, sizeof(buffer));
-                if (bytes != sizeof(buffer))
+            // Read payload message
+            bytes = read(handle, buffer, sizeof(buffer));
+            if (bytes != sizeof(buffer))
+            {
+                fprintf(stderr, "Invalid payload read, rval: [%d]!\n", bytes);
+                close(sock);
+                return 1;
+            }
+
+            message_initialize(&message);
+            memcpy(message.message_string, buffer, 256);
+
+            // Decrypt message (AES256)
+            AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+            AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+
+            // Generate message struct from message
+            message_unpack(&message);
+
+            fprintf(stderr, "Publishing \"%s\" to \"%s\"\n", message.payload, channel);
+
+            // Find channel in table
+            if (ht_search(&table, &search, channel) == HT_DNE)
+            // Channel hasn't been created yet; no devices are subscribed to the target channel
+            {
+                fprintf(stderr, "Could not find \"%s\" in table!\n", channel);
+            }
+            else
+            // Relay message to all devices subscribed to the target channel
+            {
+                channel_list = (channel_t *) search.value;
+                for (int i = 0; i < channel_list->size; ++i)
                 {
-                    fprintf(stderr, "Invalid payload read, rval: [%d]!\n", bytes);
-                    close(sock);
-                    return 1;
+                    _send_to_node(channel_list->addresses[i], buffer, 256);
+                }
+            }
+            break;
+
+        default:
+        // Message is a "Subscribe" message
+
+            mode = (message.source_id & 0x7FFF) >> 15; // Subscribe = 0, unsubscribe = 1
+
+            if ((rval = ht_search(&table, &search, channel)) == HT_DNE)
+            // Channel doesn't yet exist in table, create it
+            {
+                if(mode)
+                {
+                    fprintf(stderr, "Device [%d] cannot unsubscribe from channel, not subscribed!\n", message.source_id & 0x7FFF);
+                    break;
                 }
 
-                message_initialize(&message);
-                memcpy(message.message_string, buffer, 256);
+                channel_list = calloc(1, sizeof(channel_t));
+                // TODO: Free the following allocated memory
+                channel_list->addresses = calloc(1, sizeof(struct sockaddr_in));
+                channel_list->addresses[0] = client_addr;
+                channel_list->size = 1;
 
-                // Decrypt message (AES256)
-                AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-                AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);
-
-                // Generate message struct from message
-                message_unpack(&message);
-
-                fprintf(stderr, "Publishing \"%s\" to \"%s\"\n", message.payload, channel);
-
-                // Find channel in table
-                if (ht_search(&table, &search, channel) == HT_DNE)
-                // Channel hasn't been created yet; no devices are subscribed to the target channel
-                {
-                    fprintf(stderr, "Could not find \"%s\" in table!\n", channel);
-                }
-                else
-                // Relay message to all devices subscribed to the target channel
-                {
-                    channel_list = (channel_t *) search.value;
-                    for (int i = 0; i < channel_list->size; ++i)
-                    {
-                        _send_to_node(channel_list->addresses[i], buffer, 256);
-                    }
-                }
-
+                ht_insert(&table, channel, channel_list);
+                free(channel_list); // TODO: Don't do this?
+            }
+            else if (rval == SUCCESS)
+            // Append address to list of addresses
+            {
+                channel_list = (channel_t *) search.value;
+                channel_list->addresses = realloc(channel_list->addresses, (channel_list->size + 1) * sizeof(struct sockaddr_in));
+                channel_list->addresses[channel_list->size] = client_addr;
+                channel_list->size += 1;
+            }
+            else
+            {
+                fprintf(stderr, "An unknown error occurred when handling Subscription message: [%d]!\n", rval);
                 break;
-
-            default:
-                // Message is a "Subscribe" message
-
-                if ((rval = ht_search(&table, &search, channel)) == HT_DNE)
-                // Channel doesn't yet exist in table, create it
-                {
-                    channel_list = calloc(1, sizeof(channel_t));
-                    // TODO: Free the following allocated memory
-                    channel_list->addresses = calloc(1, sizeof(struct sockaddr_in));
-                    channel_list->addresses[0] = client_addr;
-                    channel_list->size = 1;
-
-                    ht_insert(&table, channel, channel_list);
-
-                    free(channel_list); // TODO: Don't do this?
-                }
-                else if (rval == SUCCESS)
-                // Append address to list of addresses
-                {
-                    channel_list = (channel_t *) search.value;
-                    channel_list->addresses = realloc(channel_list->addresses, (channel_list->size + 1) * sizeof(struct sockaddr_in));
-                    channel_list->addresses[channel_list->size] = client_addr;
-                    channel_list->size += 1;
-                }
-                else
-                {
-                    fprintf(stderr, "An unknown error occurred when handling Subscription message: [%d]!\n", rval);
-                }
+            }
+            break;
         }
     }
 
@@ -524,14 +533,14 @@ int publish(core_t * core, char * channel, char * payload)
         // Serialize message
         message_pack(&message);
 
-        message_debug_hex(message.message_string);
+        //message_debug_hex(message.message_string);
 
         // Encrypt message (AES256)
         AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
         AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, 256);
 
-        fprintf(stderr, "\n");
-        message_debug_hex(message.message_string);
+        //fprintf(stderr, "\n");
+        //message_debug_hex(message.message_string);
 
         // Send message
         _send_to_core(core, message.message_string, 256);
@@ -545,7 +554,49 @@ int publish(core_t * core, char * channel, char * payload)
     return 0;
 }
 
-int subscribe(core_t * core, char * channel)
+int subscribe(core_t * core, char * channel, void (*callback)(char *))
 {
+    message_t message;
+
+    struct AES_ctx context;
+    const char * key = "01234567012345670123456701234567";  // 32 bytes
+    const char * iv = "0123456701234567";   // 16 bytes
+
+    if (core && channel && callback)
+    {
+        if (strlen(channel) >= 250)
+        {
+            fprintf(stderr, "Cannot subscribe to channel name of length 250 or greater!\n");
+            return 1;
+        }
+
+        /*
+         * Send channel subscription message
+         */
+
+        // Set up message
+        message_initialize(&message);
+        message.bytes_remaining = strlen(channel);  // Bytes Remaining
+        message.source_id = 0x741;  // TODO: Unique device ID generation & storage
+        message.source_id &= 0x7FFF;    // Force ID MSB to 0
+        strcpy(message.payload, channel);   // Payload
+
+        // Serialize message
+        message_pack(&message);
+        fprintf(stderr, "%x %x %s\n", message.bytes_remaining, message.source_id, message.payload);
+
+        // Encrypt message (AES256)
+        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+        AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+
+        // Send message
+        _send_to_core(core, message.message_string, 256);
+    }
+    else
+    {
+        // Invalid parameters
+        return 1;
+    }
+
     return 0;
 }
