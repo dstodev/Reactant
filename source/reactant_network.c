@@ -322,7 +322,7 @@ int start_core_server(int port)
 
         strcpy(channel, message.payload);
 
-        switch (message.source_id & 0x7FFF) // Ignore MSB of source ID field
+        switch (message.source_id)
         {
         case 0:
         // Message is a "Publish" message
@@ -335,6 +335,8 @@ int start_core_server(int port)
                 close(sock);
                 return 1;
             }
+
+            close(handle);
 
             message_initialize(&message);
             memcpy(message.message_string, buffer, 256);
@@ -368,33 +370,82 @@ int start_core_server(int port)
         default:
         // Message is a "Subscribe" message
 
+            close(handle);
+
             mode = (message.source_id & 0x7FFF) >> 15; // Subscribe = 0, unsubscribe = 1
+            message.source_id &= 0x7FFF; // Ignore MSB of source_id field
 
             if ((rval = ht_search(&table, &search, channel)) == HT_DNE)
-            // Channel doesn't yet exist in table, create it
+            // Channel doesn't yet exist in table
             {
-                if(mode)
+                if (!mode)
+                // Subscribe
                 {
-                    fprintf(stderr, "Device [%d] cannot unsubscribe from channel, not subscribed!\n", message.source_id & 0x7FFF);
-                    break;
+                    channel_list = calloc(1, sizeof(channel_t));
+                    channel_list->size = 1;
+                    // TODO: Free the following allocated memory
+                    channel_list->addresses = calloc(1, sizeof(struct sockaddr_in));
+                    channel_list->ids = calloc(1, sizeof(unsigned int));
+                    channel_list->addresses[0] = client_addr;
+                    channel_list->ids[0] = message.source_id;
+
+                    ht_insert(&table, channel, channel_list);
+                    free(channel_list); // TODO: Don't do this?
                 }
-
-                channel_list = calloc(1, sizeof(channel_t));
-                // TODO: Free the following allocated memory
-                channel_list->addresses = calloc(1, sizeof(struct sockaddr_in));
-                channel_list->addresses[0] = client_addr;
-                channel_list->size = 1;
-
-                ht_insert(&table, channel, channel_list);
-                free(channel_list); // TODO: Don't do this?
+                else
+                // Unsubscribe
+                {
+                    fprintf(stderr, "Device [%d] cannot unsubscribe from channel [%s], does not exist!\n", message.source_id, channel);
+                }
             }
             else if (rval == SUCCESS)
-            // Append address to list of addresses
+            // Channel exists in table
             {
-                channel_list = (channel_t *) search.value;
-                channel_list->addresses = realloc(channel_list->addresses, (channel_list->size + 1) * sizeof(struct sockaddr_in));
-                channel_list->addresses[channel_list->size] = client_addr;
-                channel_list->size += 1;
+                if(!mode)
+                // Subscribe
+                {
+                    channel_list = (channel_t *) search.value;
+                    channel_list->addresses = realloc(channel_list->addresses, (channel_list->size + 1) * sizeof(struct sockaddr_in));
+                    channel_list->ids = realloc(channel_list->ids, (channel_list->size + 1) * sizeof(unsigned int));
+                    channel_list->addresses[channel_list->size] = client_addr;
+                    channel_list->ids[channel_list->size] = message.source_id;
+                    channel_list->size += 1;
+                }
+                else
+                // Unsubscribe
+                {
+                    channel_list = (channel_t *) search.value;
+
+                    // Find index of subscribed device and remove it from array
+                    for (int i = 0; i < channel_list->size; ++i)
+                    {
+                        if (channel_list->ids[i] == message.source_id)
+                        {
+                            if (channel_list->size == 1)
+                            // Device is the only subscribed device
+                            {
+                                free(channel_list->addresses);
+                                free(channel_list->ids);
+                                ht_remove(&table, channel);
+                            }
+                            else
+                            // Device is not the only subscribed device
+                            {
+                                // Patch array
+                                for (int j = i; j < channel_list->size - 1; ++j)
+                                {
+                                    channel_list->addresses[i] = channel_list->addresses[i + 1];
+                                    channel_list->ids[i] = channel_list->ids[i + 1];
+                                }
+
+                                // Free element
+                                channel_list->addresses = realloc(channel_list->addresses, (channel_list->size - 1) * sizeof(struct sockaddr_in));
+                                channel_list->ids = realloc(channel_list->ids, (channel_list->size - 1) * sizeof(unsigned int));
+                            }
+                        }
+                    }
+                }
+
             }
             else
             {
