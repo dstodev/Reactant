@@ -565,7 +565,7 @@ int publish(core_t * core, char * channel, char * payload)
 
         // Serialize message
         message_pack(&message);
-        fprintf(stderr, "%x %x %s\n", message.bytes_remaining, message.source_id, message.payload);
+        //fprintf(stderr, "%x %x %s\n", message.bytes_remaining, message.source_id, message.payload);
 
         // Encrypt message (AES256)
         AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);

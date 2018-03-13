@@ -9,8 +9,9 @@
 #include <linux/i2c-dev.h>
 #include <unistd.h>
 
+#ifdef __arm__
 #include <bcm2835.h>
-
+#endif
 
 /*******************************************************************************
  *  Category:   General

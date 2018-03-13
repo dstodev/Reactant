@@ -30,10 +30,10 @@ int main()
     //ui_test();
 
     //core_test();
-    //node_test();
+    node_test();
 
-    spi_test();
-    i2c_test();
+    //spi_test();
+    //i2c_test();
 
     return 0;
 }
@@ -47,11 +47,12 @@ void node_test()
 {
     core_t core;
 
-    start_node_client(&core, 0x741, "192.168.1.102", 10112);
+    if (!start_node_client(&core, 0x741, "192.168.1.105", 10112))
+    {
+        publish(&core, "chat1", "this is a test");
 
-    publish(&core, "chat1", "this is a test");
-
-    stop_node_client(&core);
+        stop_node_client(&core);
+    }
 }
 
 char reverse_byte(char byte)
@@ -72,6 +73,7 @@ char reverse_byte(char byte)
 
 void spi_test()
 {
+#ifdef __arm__
     if(!peripheral_init())
     {
         int rval = 0;
@@ -95,10 +97,12 @@ void spi_test()
     {
         fprintf(stderr, "%s\n", "spi_test() failed! Could not initialize peripherals!");
     }
+#endif
 }
 
 void i2c_test()
 {
+#ifdef __arm__
     char rval;
     short ch0, ch1;
 
@@ -142,7 +146,7 @@ void i2c_test()
     {
         fprintf(stderr, "%s\n", "i2c_test() failed! Could not initialize peripherals!");
     }
-
+#endif
 }
 
 void ui_test()
@@ -214,7 +218,7 @@ void queue_test()
         queue_check(enqueue(&q, items[i]));
     }
 
-    printf("Capacity: %d, Size: %d\n", q.capacity, q.size);
+    printf("Capacity: %d, Size: %d\n", (int) q.capacity, (int) q.size);
 
     printf("test\n");
     queue_check(enqueue(&q, items[0]));
