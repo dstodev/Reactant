@@ -311,6 +311,8 @@ int start_core_server(int port)
         memset(buffer, 0, sizeof(buffer));
         memset(channel, 0, sizeof(channel));
 
+        debug_output("Core initialized, awaiting connections...\n");
+
         // Wait for incoming connections
         if ((handle = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_size)) < 0)
         {
@@ -350,6 +352,9 @@ int start_core_server(int port)
 
         switch (message.source_id)
         {
+        /*
+         *  PUBLISH
+         */
         case 0:
         // Message is a "Publish" message
 
@@ -374,7 +379,7 @@ int start_core_server(int port)
             // Generate message struct from message
             message_unpack(&message);
 
-            debug_output("Publishing message [%s] to channel [%s]\n", message.payload, channel);
+            debug_output("Publishing message [%s] to channel [%s]!\n", message.payload, channel);
 
             // Find channel in table
             if (ht_search(&table, &search, channel) == HT_DNE)
@@ -391,22 +396,42 @@ int start_core_server(int port)
                     if(_send_to_node(channel_target->addresses[i], buffer, 256))
                     // Message failed to send
                     {
-                        // Patch array
-                        for (int j = i; j < channel_target->size - 1; ++j)
-                        {
-                            channel_target->addresses[i] = channel_target->addresses[i + 1];
-                            channel_target->ids[i] = channel_target->ids[i + 1];
-                        }
+                        debug_output("Failed to relay message from channel [%s] to device [%x]!\n", channel, channel_target->ids[i]);
 
-                        // Free element
-                        channel_target->addresses = realloc(channel_target->addresses, (channel_target->size - 1) * sizeof(struct sockaddr_in));
-                        channel_target->ids = realloc(channel_target->ids, (channel_target->size - 1) * sizeof(unsigned int));
+                        // Remove device from array
+                        if (channel_target->size == 1)
+                        // Device is the only subscribed device
+                        {
+                            free(channel_target->addresses);
+                            free(channel_target->ids);
+                            ht_remove(&table, channel);
+
+                            debug_output("Channel [%s] has no subscribers. Removed!\n", channel);
+                        }
+                        else
+                        // Device is not the only subscribed device
+                        {
+                            // Patch array
+                            for (int j = i; j < channel_target->size - 1; ++j)
+                            {
+                                channel_target->addresses[i] = channel_target->addresses[i + 1];
+                                channel_target->ids[i] = channel_target->ids[i + 1];
+                            }
+
+                            // Free element
+                            channel_target->addresses = realloc(channel_target->addresses, (channel_target->size - 1) * sizeof(struct sockaddr_in));
+                            channel_target->ids = realloc(channel_target->ids, (channel_target->size - 1) * sizeof(unsigned int));
+                        }
+                        ht_traverse(&table, &_network_traverse);
                     }
                     debug_output("Message published to channel [%s] relayed to device [%x]!\n", channel, channel_target->ids[i]);
                 }
             }
             break;
 
+        /*
+         *  SUBSCRIBE
+         */
         default:
         // Message is a "Subscribe" message
 
@@ -685,9 +710,6 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
     struct AES_ctx context;
     const char * key = "01234567012345670123456701234567";  // 32 bytes
     const char * iv = "0123456701234567";   // 16 bytes
-
-    debug_output("%d\n", _hash_channel("chat1"));
-    return 1;
 
     if (core && channel && callback)
     {
