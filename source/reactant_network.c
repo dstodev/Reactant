@@ -57,7 +57,7 @@ static int _send_to_node(struct sockaddr_in addr, char * message, int size)
         if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0)
         // Connection failed
         {
-            debug_output("Could not connect to node [%d]!\n", addr.sin_addr.s_addr);
+            debug_output("Could not connect to node [%x]!\n", (unsigned int) addr.sin_addr.s_addr);
             return 1;
         }
         else
@@ -69,12 +69,12 @@ static int _send_to_node(struct sockaddr_in addr, char * message, int size)
                 {
                     case EPIPE:
                         // Connection to node was lost
-                        debug_output("Connection to Node [%d] has been lost!\n", addr.sin_addr.s_addr);
+                        debug_output("Connection to Node [%x] has been lost!\n", (unsigned int) addr.sin_addr.s_addr);
                         break;
 
                     default:
                         // Unknown
-                        debug_output("An unknown error occurred while attempting to write to Node [%d]!\n", addr.sin_addr.s_addr);
+                        debug_output("An unknown error occurred while attempting to write to Node [%x]!\n", (unsigned int) addr.sin_addr.s_addr);
                 }
 
                 close(sock);
@@ -387,7 +387,7 @@ int start_core_server(int port)
             if (ht_search(&table, &search, channel) == HT_DNE)
             // Channel hasn't been created yet; no devices are subscribed to the target channel
             {
-                debug_output("Could not find [%s] in table!\n", channel);
+                debug_output("No devices are subscribed to channel [%s]!\n", channel);
             }
             else
             // Relay message to all devices subscribed to the target channel
