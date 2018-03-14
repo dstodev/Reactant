@@ -213,6 +213,7 @@ void _network_traverse(void * v_key, void * v_value)
             debug_output("\n");
         }
     }
+    debug_output("\n");
 }
 
 int discover_server(int port)
@@ -257,12 +258,12 @@ int discover_server(int port)
 int start_core_server(int port)
 {
     int rval;
-    message_t message;
 
     hash_table_t table;
     ht_construct(&table, TABLE_SIZE, 250,       sizeof(channel_t), &_hash_channel, &_compare_channel);
     //           table   10          key size   value size         hash function   compare function
 
+    message_t message;
     hash_data_t search;
     channel_t  * channel_target;
 
@@ -278,7 +279,9 @@ int start_core_server(int port)
     int bytes = 0;
 
     char channel[250];
+
     char mode;
+    char found;
 
     struct sockaddr_in server_addr, client_addr;
     server_addr.sin_family = AF_INET;
@@ -368,7 +371,7 @@ int start_core_server(int port)
             if (ht_search(&table, &search, channel) == HT_DNE)
             // Channel hasn't been created yet; no devices are subscribed to the target channel
             {
-                debug_output("Could not find \"%s\" in table!\n", channel);
+                debug_output("Could not find [%s] in table!\n", channel);
             }
             else
             // Relay message to all devices subscribed to the target channel
@@ -390,7 +393,7 @@ int start_core_server(int port)
                         channel_target->addresses = realloc(channel_target->addresses, (channel_target->size - 1) * sizeof(struct sockaddr_in));
                         channel_target->ids = realloc(channel_target->ids, (channel_target->size - 1) * sizeof(unsigned int));
                     }
-                    debug_output("Message published to channel [%s] relayed to device [%d]!\n", channel, channel_target->ids[i]);
+                    debug_output("Message published to channel [%s] relayed to device [%x]!\n", channel, channel_target->ids[i]);
                 }
             }
             break;
@@ -420,13 +423,13 @@ int start_core_server(int port)
                     ht_insert(&table, channel, channel_target);
                     free(channel_target); // TODO: Don't do this?
 
-                    debug_output("Channel [%s] created and device [%d] subscribed!\n", channel, message.source_id);
+                    debug_output("Channel [%s] created and device [%x] subscribed!\n", channel, message.source_id);
                     ht_traverse(&table, &_network_traverse);
                 }
                 else
                 // Unsubscribe
                 {
-                    debug_output("Device [%d] cannot unsubscribe from channel [%s], channel does not exist!\n", message.source_id, channel);
+                    debug_output("Device [%x] cannot unsubscribe from channel [%s], channel does not exist!\n", message.source_id, channel);
                 }
             }
             else if (rval == SUCCESS)
@@ -436,14 +439,36 @@ int start_core_server(int port)
                 // Subscribe
                 {
                     channel_target = (channel_t *) search.value;
-                    channel_target->addresses = realloc(channel_target->addresses, (channel_target->size + 1) * sizeof(struct sockaddr_in));
-                    channel_target->ids = realloc(channel_target->ids, (channel_target->size + 1) * sizeof(unsigned int));
-                    channel_target->addresses[channel_target->size] = client_addr;
-                    channel_target->ids[channel_target->size] = message.source_id;
-                    channel_target->size += 1;
+                    found = 0;
 
-                    debug_output("Device [%d] subscribed to channel [%s]!\n", message.source_id, channel);
-                    ht_traverse(&table, &_network_traverse);
+                    // If device already exists, update address
+                    for (int i = 0; i < channel_target->size; ++i)
+                    {
+                        if (channel_target->ids[i] == message.source_id)
+                        {
+                            found = 1;
+
+                            channel_target->addresses[i] = client_addr;
+
+                            debug_output("Device [%x] subscription to channel [%s] updated!\n", message.source_id, channel);
+                            ht_traverse(&table, &_network_traverse);
+                            break;
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        channel_target->addresses = realloc(channel_target->addresses, (channel_target->size + 1) * sizeof(struct sockaddr_in));
+                        channel_target->ids = realloc(channel_target->ids, (channel_target->size + 1) * sizeof(unsigned int));
+
+                        channel_target->addresses[channel_target->size] = client_addr;
+                        channel_target->ids[channel_target->size] = message.source_id;
+
+                        channel_target->size += 1;
+
+                        debug_output("Device [%x] subscribed to channel [%s]!\n", message.source_id, channel);
+                        ht_traverse(&table, &_network_traverse);
+                    }
                 }
                 else
                 // Unsubscribe
@@ -482,7 +507,7 @@ int start_core_server(int port)
                             break;
                         }
                     }
-                    debug_output("Device [%d] unsubscribed to channel [%s]!\n", message.source_id, channel);
+                    debug_output("Device [%x] unsubscribed to channel [%s]!\n", message.source_id, channel);
                 }
             }
             else
