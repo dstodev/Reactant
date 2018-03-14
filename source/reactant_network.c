@@ -392,6 +392,7 @@ int start_core_server(int port)
             else
             // Relay message to all devices subscribed to the target channel
             {
+                debug_output("Relaying message from channel [%s] to [%d] devices!\n", channel, channel_target->size);
                 channel_target = (channel_t *) search.value;
                 for (int i = 0; i < channel_target->size; ++i)
                 {
@@ -423,10 +424,15 @@ int start_core_server(int port)
                             // Free element
                             channel_target->addresses = realloc(channel_target->addresses, (channel_target->size - 1) * sizeof(struct sockaddr_in));
                             channel_target->ids = realloc(channel_target->ids, (channel_target->size - 1) * sizeof(unsigned int));
+
+                            channel_target->size -= 1;
                         }
                         ht_traverse(&table, &_network_traverse);
                     }
-                    debug_output("Message published to channel [%s] relayed to device [%x]!\n", channel, channel_target->ids[i]);
+                    else
+                    {
+                        debug_output("Message published to channel [%s] relayed to device [%x]!\n", channel, channel_target->ids[i]);
+                    }
                 }
             }
             break;
@@ -538,6 +544,8 @@ int start_core_server(int port)
                                 // Free element
                                 channel_target->addresses = realloc(channel_target->addresses, (channel_target->size - 1) * sizeof(struct sockaddr_in));
                                 channel_target->ids = realloc(channel_target->ids, (channel_target->size - 1) * sizeof(unsigned int));
+
+                                channel_target->size -= 1;
                             }
 
                             break;
