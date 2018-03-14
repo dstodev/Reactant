@@ -393,10 +393,13 @@ int start_core_server(int port)
             // Relay message to all devices subscribed to the target channel
             {
                 debug_output("Relaying message from channel [%s] to [%d] devices!\n", channel, channel_target->size);
+
                 channel_target = (channel_t *) search.value;
-                for (int i = 0; i < channel_target->size; ++i)
+                found = 0;
+
+                for (int i = 0; i < channel_target->size && !found; ++i)
                 {
-                    if(_send_to_node(channel_target->addresses[i], buffer, 256))
+                    if (_send_to_node(channel_target->addresses[i], buffer, 256))
                     // Message failed to send
                     {
                         debug_output("Failed to relay message from channel [%s] to device [%x]!\n", channel, channel_target->ids[i]);
@@ -408,6 +411,8 @@ int start_core_server(int port)
                             free(channel_target->addresses);
                             free(channel_target->ids);
                             ht_remove(&table, channel);
+
+                            found = 1;
 
                             debug_output("Channel [%s] has no subscribers. Removed!\n", channel);
                         }
