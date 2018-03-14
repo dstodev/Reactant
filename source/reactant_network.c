@@ -100,8 +100,8 @@ static uint32_t _hash_channel(void * name)
 
     for (int i = 0; i < strlen(str); ++i)
     {
-        hash += str[i];
         hash ^= str[i];
+        hash += str[i];
     }
 
     return (hash % 10);
@@ -323,8 +323,8 @@ int start_core_server(int port)
         if ((bytes = read(handle, buffer, sizeof(buffer))) != sizeof(buffer))
         {
             debug_output("Invalid initial read, rval: [%d]!\n", bytes);
-            close(sock);
-            return 1;
+            close(handle);
+            continue;
         }
 
         message_initialize(&message);
@@ -349,8 +349,8 @@ int start_core_server(int port)
             if (bytes != sizeof(buffer))
             {
                 debug_output("Invalid payload read, rval: [%d]!\n", bytes);
-                close(sock);
-                return 1;
+                close(handle);
+                continue;
             }
 
             close(handle);
@@ -676,6 +676,9 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
     struct AES_ctx context;
     const char * key = "01234567012345670123456701234567";  // 32 bytes
     const char * iv = "0123456701234567";   // 16 bytes
+
+    debug_output("%d\n", _hash_channel("chat1"));
+    return 1;
 
     if (core && channel && callback)
     {
