@@ -199,6 +199,22 @@ int start_discovery_server(int port)
     return 1;
 }
 
+void _network_traverse(void * v_key, void * v_value)
+{
+    char * key = (char *) v_key;
+    channel_t * array = (channel_t *) v_value;
+
+    debug_output("Channel [%s] devices:\n", key);
+    for (int i = 0; i < array->size; ++i)
+    {
+        debug_output("%d. %x \t", i + 1, array->ids[i]);
+        if ((i + 1) % 5 == 0)
+        {
+            debug_output("\n");
+        }
+    }
+}
+
 int discover_server(int port)
 {
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -244,8 +260,8 @@ int start_core_server(int port)
     message_t message;
 
     hash_table_t table;
-    ht_construct(&table, TABLE_SIZE, sizeof(char *), sizeof(channel_t), &_hash_channel, &_compare_channel);
-    //           table   10          key size        value size           hash function   compare function
+    ht_construct(&table, TABLE_SIZE, 250,       sizeof(channel_t), &_hash_channel, &_compare_channel);
+    //           table   10          key size   value size         hash function   compare function
 
     hash_data_t search;
     channel_t  * channel_target;
@@ -405,6 +421,7 @@ int start_core_server(int port)
                     free(channel_target); // TODO: Don't do this?
 
                     debug_output("Channel [%s] created and device [%d] subscribed!\n", channel, message.source_id);
+                    ht_traverse(&table, &_network_traverse);
                 }
                 else
                 // Unsubscribe
@@ -426,6 +443,7 @@ int start_core_server(int port)
                     channel_target->size += 1;
 
                     debug_output("Device [%d] subscribed to channel [%s]!\n", message.source_id, channel);
+                    ht_traverse(&table, &_network_traverse);
                 }
                 else
                 // Unsubscribe
