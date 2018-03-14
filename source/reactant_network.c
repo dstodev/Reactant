@@ -322,7 +322,16 @@ int start_core_server(int port)
         // Read incoming message
         if ((bytes = read(handle, buffer, sizeof(buffer))) != sizeof(buffer))
         {
-            debug_output("Invalid initial read, rval: [%d]!\n", bytes);
+            if (bytes)
+            {
+                debug_output("Invalid initial read, rval: [%d]!\n", bytes);
+
+            }
+            else
+            {
+                debug_output("Node terminated connection before communication!\n");
+            }
+
             close(handle);
             continue;
         }
