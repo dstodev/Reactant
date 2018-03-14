@@ -305,13 +305,15 @@ int start_core_server(int port)
         return 1;
     }
 
+    debug_output("\nCore initialized, awaiting connections...\n");
+
     while(1)
     {
         // Clear buffers
         memset(buffer, 0, sizeof(buffer));
         memset(channel, 0, sizeof(channel));
 
-        debug_output("Core initialized, awaiting connections...\n");
+        debug_output("\n");
 
         // Wait for incoming connections
         if ((handle = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_size)) < 0)
