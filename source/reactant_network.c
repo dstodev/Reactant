@@ -57,7 +57,7 @@ static int _send_to_node(struct sockaddr_in addr, char * message, int size)
         if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0)
         // Connection failed
         {
-            debug_output("Could not connect to node [%x]!\n", (unsigned int) addr.sin_addr.s_addr);
+            debug_output("Could not connect to node [%x]!\n", (unsigned int) ntohl(addr.sin_addr.s_addr));
             return 1;
         }
         else
@@ -69,12 +69,12 @@ static int _send_to_node(struct sockaddr_in addr, char * message, int size)
                 {
                     case EPIPE:
                         // Connection to node was lost
-                        debug_output("Connection to Node [%x] has been lost!\n", (unsigned int) addr.sin_addr.s_addr);
+                        debug_output("Connection to Node [%x] has been lost!\n", (unsigned int) ntohl(addr.sin_addr.s_addr));
                         break;
 
                     default:
                         // Unknown
-                        debug_output("An unknown error occurred while attempting to write to Node [%x]!\n", (unsigned int) addr.sin_addr.s_addr);
+                        debug_output("An unknown error occurred while attempting to write to Node [%x]!\n", (unsigned int) ntohl(addr.sin_addr.s_addr));
                 }
 
                 close(sock);
