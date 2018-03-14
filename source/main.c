@@ -27,6 +27,8 @@ int test_callback(WINDOW * window);
 
 int main()
 {
+    debug_control(ENABLE);
+
     //ui_test();
 
     //core_test();
@@ -43,6 +45,11 @@ void core_test()
     start_core_server(10112);
 }
 
+void _node_callback(char * message)
+{
+    fprintf(stderr, "Received relayed: %s\n", message);
+}
+
 void node_test()
 {
     core_t core;
@@ -50,6 +57,7 @@ void node_test()
     if (!start_node_client(&core, 0x741, "192.168.1.105", 10112))
     {
         publish(&core, "chat1", "this is a test");
+        //subscribe(&core, "chat1", &_node_callback);
 
         stop_node_client(&core);
     }

@@ -94,7 +94,7 @@ void debug_output(const char * format, ...)
         vsnprintf(buffer, sizeof(buffer), format, args);
 
         // Print formatted string
-        printf(buffer);
+        fprintf(stderr, buffer);
         fflush(stdout);
 
         // Clean up memory allocated to the variable argument list

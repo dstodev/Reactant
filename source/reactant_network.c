@@ -17,12 +17,12 @@ static int _send_to_core(core_t * core, char * message, int size)
                 {
                     case EPIPE:
                         // Connection to core was lost
-                        fprintf(stderr, "Connection to the Core has been lost!\n");
+                        debug_output("Connection to the Core has been lost!\n");
                         break;
 
                     default:
                         // Unknown
-                        fprintf(stderr, "An unknown error occurred while attempting to publish to the Core!\n");
+                        debug_output("An unknown error occurred while attempting to publish to the Core!\n");
                 }
 
                 return 1;
@@ -31,7 +31,7 @@ static int _send_to_core(core_t * core, char * message, int size)
         else
         {
             // Connection to core was never established
-            fprintf(stderr, "Connection to the Core has not yet been established!\n");
+            debug_output("Connection to the Core has not yet been established!\n");
             return 1;
         }
     }
@@ -57,7 +57,7 @@ static int _send_to_node(struct sockaddr_in addr, char * message, int size)
         if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0)
         // Connection failed
         {
-            fprintf(stderr, "Could not connect to node [%d]!\n", addr.sin_addr.s_addr);
+            debug_output("Could not connect to node [%d]!\n", addr.sin_addr.s_addr);
             return 1;
         }
         else
@@ -69,12 +69,12 @@ static int _send_to_node(struct sockaddr_in addr, char * message, int size)
                 {
                     case EPIPE:
                         // Connection to node was lost
-                        fprintf(stderr, "Connection to Node [%d] has been lost!\n", addr.sin_addr.s_addr);
+                        debug_output("Connection to Node [%d] has been lost!\n", addr.sin_addr.s_addr);
                         break;
 
                     default:
                         // Unknown
-                        fprintf(stderr, "An unknown error occurred while attempting to write to Node [%d]!\n", addr.sin_addr.s_addr);
+                        debug_output("An unknown error occurred while attempting to write to Node [%d]!\n", addr.sin_addr.s_addr);
                 }
 
                 close(sock);
@@ -120,7 +120,7 @@ unsigned long get_interface()
     char a_name[16], s_name[16];
     int i = 0, j = 0;
 
-    fprintf(stderr, "Found interfaces:\n");
+    debug_output("Found interfaces:\n");
 
     getifaddrs (&if_addr);
     for (ifa = if_addr; ifa; ifa = ifa->ifa_next)
@@ -153,7 +153,7 @@ unsigned long get_interface()
     subnet = (struct sockaddr_in *) ifa->ifa_netmask;
 
     broadcast.sin_addr.s_addr = address->sin_addr.s_addr | ~(subnet->sin_addr.s_addr);
-    fprintf(stderr, "Chosen interface: %5s    Broadcast: %s\n", ifa->ifa_name, inet_ntoa(broadcast.sin_addr));
+    debug_output("Chosen interface: %5s    Broadcast: %s\n", ifa->ifa_name, inet_ntoa(broadcast.sin_addr));
 
     freeifaddrs(if_addr);
     return broadcast.sin_addr.s_addr;
@@ -177,7 +177,7 @@ int start_discovery_server(int port)
     int broadcast_permission = 1;
     if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast_permission, sizeof(broadcast_permission)) < 0)
     {
-        fprintf(stderr, "Could not set socket options!\n");
+        debug_output("Could not set socket options!\n");
         close(sock);
         return 1;
     }
@@ -190,7 +190,7 @@ int start_discovery_server(int port)
         // Broadcast message
         if ((bytes = sendto(sock, "Discovery Broadcast", 19, 0, (struct sockaddr *) &server_addr, sizeof(struct sockaddr))) < 0)
         {
-            fprintf(stderr, "Failed to broadcast message!\n");
+            debug_output("Failed to broadcast message!\n");
             break;
         }
     }
@@ -216,21 +216,21 @@ int discover_server(int port)
     int broadcast_permission = 1;
     if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast_permission, sizeof(broadcast_permission)) < 0)
     {
-        fprintf(stderr, "Could not set socket options!\n");
+        debug_output("Could not set socket options!\n");
         close(sock);
         return 1;
     }
 
     if (bind(sock, (struct sockaddr *) &client_addr, sizeof(client_addr)) < 0)
     {
-        fprintf(stderr, "Could not bind to %d:%d!\n", ntohl(client_addr.sin_addr.s_addr), ntohs(port));
+        debug_output("Could not bind to %d:%d!\n", ntohl(client_addr.sin_addr.s_addr), ntohs(port));
         return 1;
     }
 
     while ((bytes = recvfrom(sock, message, BUFFER_DEPTH, 0, (struct sockaddr *) &server_address, &address_length)) > 0)
     {
         message[bytes] = '\0';
-        fprintf(stderr, "%s\n", message);
+        debug_output("%s\n", message);
     }
 
     close(sock);
@@ -273,7 +273,7 @@ int start_core_server(int port)
     // Bind server socket to the given port
     if (bind(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
     {
-        fprintf(stderr, "Could not bind to %d:%d!\n", ntohl(server_addr.sin_addr.s_addr), ntohs(port));
+        debug_output("Could not bind to %d:%d!\n", ntohl(server_addr.sin_addr.s_addr), ntohs(port));
         close(sock);
         return 1;
     }
@@ -281,7 +281,7 @@ int start_core_server(int port)
     // Start listening on the provided port
     if (listen(sock, LISTEN_QUEUE) < 0)
     {
-        fprintf(stderr, "Could not listen for incoming connections!\n");
+        debug_output("Could not listen for incoming connections!\n");
         close(sock);
         return 1;
     }
@@ -293,19 +293,17 @@ int start_core_server(int port)
         memset(channel, 0, sizeof(channel));
 
         // Wait for incoming connections
-        handle = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_size);
-        if (handle < 0)
+        if ((handle = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_size)) < 0)
         {
-            fprintf(stderr, "Failed to accept incoming connection!\n");
+            debug_output("Failed to accept incoming connection!\n");
             close(sock);
             return 1;
         }
 
         // Read incoming message
-        bytes = read(handle, buffer, sizeof(buffer));
-        if (bytes != sizeof(buffer))
+        if ((bytes = read(handle, buffer, sizeof(buffer))) != sizeof(buffer))
         {
-            fprintf(stderr, "Invalid initial read, rval: [%d]!\n", bytes);
+            debug_output("Invalid initial read, rval: [%d]!\n", bytes);
             close(sock);
             return 1;
         }
@@ -331,7 +329,7 @@ int start_core_server(int port)
             bytes = read(handle, buffer, sizeof(buffer));
             if (bytes != sizeof(buffer))
             {
-                fprintf(stderr, "Invalid payload read, rval: [%d]!\n", bytes);
+                debug_output("Invalid payload read, rval: [%d]!\n", bytes);
                 close(sock);
                 return 1;
             }
@@ -348,13 +346,13 @@ int start_core_server(int port)
             // Generate message struct from message
             message_unpack(&message);
 
-            fprintf(stderr, "Publishing \"%s\" to \"%s\"\n", message.payload, channel);
+            debug_output("Publishing message [%s] to channel [%s]\n", message.payload, channel);
 
             // Find channel in table
             if (ht_search(&table, &search, channel) == HT_DNE)
             // Channel hasn't been created yet; no devices are subscribed to the target channel
             {
-                fprintf(stderr, "Could not find \"%s\" in table!\n", channel);
+                debug_output("Could not find \"%s\" in table!\n", channel);
             }
             else
             // Relay message to all devices subscribed to the target channel
@@ -362,7 +360,21 @@ int start_core_server(int port)
                 channel_target = (channel_t *) search.value;
                 for (int i = 0; i < channel_target->size; ++i)
                 {
-                    _send_to_node(channel_target->addresses[i], buffer, 256);
+                    if(_send_to_node(channel_target->addresses[i], buffer, 256))
+                    // Message failed to send
+                    {
+                        // Patch array
+                        for (int j = i; j < channel_target->size - 1; ++j)
+                        {
+                            channel_target->addresses[i] = channel_target->addresses[i + 1];
+                            channel_target->ids[i] = channel_target->ids[i + 1];
+                        }
+
+                        // Free element
+                        channel_target->addresses = realloc(channel_target->addresses, (channel_target->size - 1) * sizeof(struct sockaddr_in));
+                        channel_target->ids = realloc(channel_target->ids, (channel_target->size - 1) * sizeof(unsigned int));
+                    }
+                    debug_output("Message published to channel [%s] relayed to device [%d]!\n", channel, channel_target->ids[i]);
                 }
             }
             break;
@@ -391,11 +403,13 @@ int start_core_server(int port)
 
                     ht_insert(&table, channel, channel_target);
                     free(channel_target); // TODO: Don't do this?
+
+                    debug_output("Channel [%s] created and device [%d] subscribed!\n", channel, message.source_id);
                 }
                 else
                 // Unsubscribe
                 {
-                    fprintf(stderr, "Device [%d] cannot unsubscribe from channel [%s], does not exist!\n", message.source_id, channel);
+                    debug_output("Device [%d] cannot unsubscribe from channel [%s], channel does not exist!\n", message.source_id, channel);
                 }
             }
             else if (rval == SUCCESS)
@@ -410,6 +424,8 @@ int start_core_server(int port)
                     channel_target->addresses[channel_target->size] = client_addr;
                     channel_target->ids[channel_target->size] = message.source_id;
                     channel_target->size += 1;
+
+                    debug_output("Device [%d] subscribed to channel [%s]!\n", message.source_id, channel);
                 }
                 else
                 // Unsubscribe
@@ -427,6 +443,8 @@ int start_core_server(int port)
                                 free(channel_target->addresses);
                                 free(channel_target->ids);
                                 ht_remove(&table, channel);
+
+                                debug_output("Channel [%s] has no subscribers. Removed!\n", channel);
                             }
                             else
                             // Device is not the only subscribed device
@@ -446,12 +464,12 @@ int start_core_server(int port)
                             break;
                         }
                     }
+                    debug_output("Device [%d] unsubscribed to channel [%s]!\n", message.source_id, channel);
                 }
-
             }
             else
             {
-                fprintf(stderr, "An unknown error occurred when handling Subscription message: [%d]!\n", rval);
+                debug_output("An unknown error occurred when handling Subscription message: [%d]!\n", rval);
                 break;
             }
             break;
@@ -483,14 +501,14 @@ int start_node_client(core_t * core, unsigned int id, char * ip, int port)
         if (connect(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
         {
             // Connection failed
-            fprintf(stderr, "Could not connect to server!\n");
+            debug_output("Could not connect to server!\n");
             return 1;
         }
         else
         {
             // Connection succeeded
             core->addr = calloc(1, sizeof(server_addr));
-            *core->addr = server_addr;
+            *(core->addr) = server_addr;
             core->sock = sock;
             core->node_id = id;
         }
@@ -542,14 +560,14 @@ int publish(core_t * core, char * channel, char * payload)
     {
         if (strlen(channel) >= 250)
         {
-            fprintf(stderr, "Cannot publish to channel name of length 250 or greater!\n");
+            debug_output("Cannot publish to channel name of length 250 or greater!\n");
             return 1;
         }
 
         if (strlen(payload) >= 250)
         {
             // TODO: Allow arbitrary message size
-            fprintf(stderr, "Cannot publish message of length 250 or greater!\n");
+            debug_output("Cannot publish message of length 250 or greater!\n");
             return 1;
         }
 
@@ -620,7 +638,7 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
     {
         if (strlen(channel) >= 250)
         {
-            fprintf(stderr, "Cannot subscribe to channel name of length 250 or greater!\n");
+            debug_output("Cannot subscribe to channel name of length 250 or greater!\n");
             return 1;
         }
 
