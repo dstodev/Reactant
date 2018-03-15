@@ -9,6 +9,9 @@ static int _send_to_core(core_t * core, char * message, int size)
 {
     if (core && message)
     {
+        // Ignore SIGPIPE signals
+        signal(SIGPIPE, SIG_IGN);
+
         if (core->sock)
         {
             if (write(core->sock, message, size) < 0)
@@ -16,7 +19,7 @@ static int _send_to_core(core_t * core, char * message, int size)
                 switch (errno)
                 {
                     case EPIPE:
-                        // Connection to core was lost
+                        // Connection to Core was lost
                         debug_output("Connection to the Core has been lost!\n");
                         break;
 
@@ -30,7 +33,7 @@ static int _send_to_core(core_t * core, char * message, int size)
         }
         else
         {
-            // Connection to core was never established
+            // Connection to Core was never established
             debug_output("Connection to the Core has not yet been established!\n");
             return 1;
         }
@@ -44,44 +47,38 @@ static int _send_to_core(core_t * core, char * message, int size)
     return 0;
 }
 
-static int _send_to_node(struct sockaddr_in addr, char * message, int size)
+static int _send_to_node(node_t * node, char * message, int size)
 {
-    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-    if (message)
+    if (node && message)
     {
         // Ignore SIGPIPE signals
         signal(SIGPIPE, SIG_IGN);
 
-        // Connect to Node device
-        if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0)
-        // Connection failed
+        if (node->sock)
         {
-            debug_output("Could not connect to node [%x]!\n", (unsigned int) ntohl(addr.sin_addr.s_addr));
-            return 1;
-        }
-        else
-        // Connection succeeded
-        {
-            if (write(sock, message, size) < 0)
+            if (write(node->sock, message, size) < 0)
             {
                 switch (errno)
                 {
                     case EPIPE:
-                        // Connection to node was lost
-                        debug_output("Connection to Node [%x] has been lost!\n", (unsigned int) ntohl(addr.sin_addr.s_addr));
+                        // Connection to Node was lost
+                        debug_output("Connection to Node [%x] has been lost!\n", node->node_id);
                         break;
 
                     default:
                         // Unknown
-                        debug_output("An unknown error occurred while attempting to write to Node [%x]!\n", (unsigned int) ntohl(addr.sin_addr.s_addr));
+                        debug_output("An unknown error occurred while attempting to write to Node [%x]!\n", node->node_id);
                 }
 
-                close(sock);
+                close(node->sock);
                 return 1;
             }
-
-            close(sock);
+            else
+            {
+                // Connection to Node was never established
+                debug_output("Connection to the Node [%x] has not yet been established!\n", node->node_id);
+                return 1;
+            }
         }
     }
     else
@@ -207,7 +204,7 @@ void _network_traverse(void * v_key, void * v_value)
     debug_output("Channel [%s] devices:\n", key);
     for (int i = 0; i < array->size; ++i)
     {
-        debug_output("%d. %x \t", i + 1, array->ids[i]);
+        debug_output("%d. %x \t", i + 1, array->nodes[i].node_id);
         if ((i + 1) % 5 == 0)
         {
             debug_output("\n");
@@ -399,17 +396,18 @@ int start_core_server(int port)
 
                 for (int i = 0; i < channel_target->size && !found; ++i)
                 {
-                    if (_send_to_node(channel_target->addresses[i], buffer, 256))
+                    if (_send_to_node(&(channel_target->nodes[i]), buffer, 256))
                     // Message failed to send
                     {
-                        debug_output("Failed to relay message from channel [%s] to device [%x]!\n", channel, channel_target->ids[i]);
+                        debug_output("Failed to relay message from channel [%s] to device [%x]!\n", channel, channel_target->nodes[i].node_id);
 
                         // Remove device from array
                         if (channel_target->size == 1)
                         // Device is the only subscribed device
                         {
-                            free(channel_target->addresses);
-                            free(channel_target->ids);
+                            close(channel_target->nodes[0].sock);
+                            free(channel_target->nodes[0].addr);
+                            free(channel_target->nodes);
                             ht_remove(&table, channel);
 
                             found = 1;
@@ -419,16 +417,18 @@ int start_core_server(int port)
                         else
                         // Device is not the only subscribed device
                         {
+                            // Free Node elements
+                            close(channel_target->nodes[i].sock);
+                            free(channel_target->nodes[i].addr);
+
                             // Patch array
                             for (int j = i; j < channel_target->size - 1; ++j)
                             {
-                                channel_target->addresses[i] = channel_target->addresses[i + 1];
-                                channel_target->ids[i] = channel_target->ids[i + 1];
+                                channel_target->nodes[i] = channel_target->nodes[i + 1];
                             }
 
                             // Free element
-                            channel_target->addresses = realloc(channel_target->addresses, (channel_target->size - 1) * sizeof(struct sockaddr_in));
-                            channel_target->ids = realloc(channel_target->ids, (channel_target->size - 1) * sizeof(unsigned int));
+                            channel_target->nodes = realloc(channel_target->nodes, (channel_target->size - 1) * sizeof(node_t));
 
                             channel_target->size -= 1;
                         }
@@ -436,7 +436,7 @@ int start_core_server(int port)
                     }
                     else
                     {
-                        debug_output("Message published to channel [%s] relayed to device [%x]!\n", channel, channel_target->ids[i]);
+                        debug_output("Message published to channel [%s] relayed to device [%x]!\n", channel, channel_target->nodes[i].node_id);
                     }
                 }
             }
@@ -447,8 +447,6 @@ int start_core_server(int port)
          */
         default:
         // Message is a "Subscribe" message
-
-            close(handle);
 
             mode = (message.source_id & 0x7FFF) >> 15; // Subscribe = 0, unsubscribe = 1
             message.source_id &= 0x7FFF; // Ignore MSB of source_id field
@@ -461,14 +459,17 @@ int start_core_server(int port)
                 {
                     channel_target = calloc(1, sizeof(channel_t));
                     channel_target->size = 1;
+
                     // TODO: Free the following allocated memory
-                    channel_target->addresses = calloc(1, sizeof(struct sockaddr_in));
-                    channel_target->ids = calloc(1, sizeof(unsigned int));
-                    channel_target->addresses[0] = client_addr;
-                    channel_target->ids[0] = message.source_id;
+                    channel_target->nodes = calloc(1, sizeof(node_t));
+
+                    channel_target->nodes[0].addr = calloc(1, sizeof(struct sockaddr_in));
+                    *(channel_target->nodes[0].addr) = client_addr;
+                    channel_target->nodes[0].sock = handle;
+                    channel_target->nodes[0].node_id = message.source_id;
 
                     ht_insert(&table, channel, channel_target);
-                    free(channel_target); // TODO: Don't do this?
+                    free(channel_target);
 
                     debug_output("Channel [%s] created and device [%x] subscribed!\n", channel, message.source_id);
                     ht_traverse(&table, &_network_traverse);
@@ -491,11 +492,12 @@ int start_core_server(int port)
                     // If device already exists, update address
                     for (int i = 0; i < channel_target->size; ++i)
                     {
-                        if (channel_target->ids[i] == message.source_id)
+                        if (channel_target->nodes[i].node_id == message.source_id)
                         {
                             found = 1;
 
-                            channel_target->addresses[i] = client_addr;
+                            *(channel_target->nodes[i].addr) = client_addr;
+                            channel_target->nodes[i].sock = handle;
 
                             debug_output("Device [%x] subscription to channel [%s] updated!\n", message.source_id, channel);
                             ht_traverse(&table, &_network_traverse);
@@ -504,12 +506,14 @@ int start_core_server(int port)
                     }
 
                     if (!found)
+                    // Device does not yet exist in array of subscribers
                     {
-                        channel_target->addresses = realloc(channel_target->addresses, (channel_target->size + 1) * sizeof(struct sockaddr_in));
-                        channel_target->ids = realloc(channel_target->ids, (channel_target->size + 1) * sizeof(unsigned int));
+                        channel_target->nodes = realloc(channel_target->nodes, (channel_target->size + 1) * sizeof(node_t));
 
-                        channel_target->addresses[channel_target->size] = client_addr;
-                        channel_target->ids[channel_target->size] = message.source_id;
+                        channel_target->nodes[channel_target->size].addr = calloc(1, sizeof(struct sockaddr_in));
+                        *(channel_target->nodes[channel_target->size].addr) = client_addr;
+                        channel_target->nodes[channel_target->size].sock = handle;
+                        channel_target->nodes[channel_target->size].node_id = message.source_id;
 
                         channel_target->size += 1;
 
@@ -525,13 +529,14 @@ int start_core_server(int port)
                     // Find index of subscribed device and remove it from array
                     for (int i = 0; i < channel_target->size; ++i)
                     {
-                        if (channel_target->ids[i] == message.source_id)
+                        if (channel_target->nodes[i].node_id == message.source_id)
                         {
                             if (channel_target->size == 1)
                             // Device is the only subscribed device
                             {
-                                free(channel_target->addresses);
-                                free(channel_target->ids);
+                                close(channel_target->nodes[i].sock);
+                                free(channel_target->nodes[i].addr);
+                                free(channel_target->nodes);
                                 ht_remove(&table, channel);
 
                                 debug_output("Channel [%s] has no subscribers. Removed!\n", channel);
@@ -539,16 +544,18 @@ int start_core_server(int port)
                             else
                             // Device is not the only subscribed device
                             {
+                                // Free Node elements
+                                close(channel_target->nodes[i].sock);
+                                free(channel_target->nodes[i].addr);
+
                                 // Patch array
                                 for (int j = i; j < channel_target->size - 1; ++j)
                                 {
-                                    channel_target->addresses[i] = channel_target->addresses[i + 1];
-                                    channel_target->ids[i] = channel_target->ids[i + 1];
+                                    channel_target->nodes[i] = channel_target->nodes[i + 1];
                                 }
 
                                 // Free element
-                                channel_target->addresses = realloc(channel_target->addresses, (channel_target->size - 1) * sizeof(struct sockaddr_in));
-                                channel_target->ids = realloc(channel_target->ids, (channel_target->size - 1) * sizeof(unsigned int));
+                                channel_target->nodes = realloc(channel_target->nodes, (channel_target->size - 1) * sizeof(node_t));
 
                                 channel_target->size -= 1;
                             }

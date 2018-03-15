@@ -54,7 +54,7 @@ void node_test()
 {
     core_t core;
 
-    if (!start_node_client(&core, 0x741, "192.168.1.105", 10112))
+    if (!start_node_client(&core, 0x741, "10.103.1.95", 10112)) // 192.168.1.105
     {
         publish(&core, "chat1", "this is a test");
         //subscribe(&core, "chat1", &_node_callback);

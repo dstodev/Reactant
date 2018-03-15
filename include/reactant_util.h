@@ -186,7 +186,7 @@ int dequeue_blocking(queue_t * queue, void ** item);
 typedef struct _message_t
 {
     short bytes_remaining;  // 2 bytes
-    unsigned int source_id;          // 4 bytes
+    unsigned int source_id; // 4 bytes
     char payload[250];      // 250 bytes (where the last byte must always be zero)
 
     char message_string[256];   // Full message, built from components

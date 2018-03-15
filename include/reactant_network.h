@@ -30,12 +30,13 @@ typedef struct _core_t
 
 } core_t;
 
+typedef core_t node_t;
+
 typedef struct _channel_t
 {
     // char * name; // Don't need name, it's the key of containing hash_data_t
     int size;
-    struct sockaddr_in * addresses;
-    unsigned int * ids;
+    node_t * nodes;
 
 } channel_t;
 
