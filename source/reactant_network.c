@@ -110,6 +110,95 @@ static uint8_t _compare_channel(void * lhs, void * rhs)
     return (strcmp((char *) lhs, (char *) rhs) == 0);
 }
 
+static void * _subscription_listener(void * pack)
+{
+    core_t * core = ((subpack_t *) pack)->core;
+    int * size = &(((subpack_t *) pack)->size);
+    subscription_t * subs = ((subpack_t *) pack)->subs;
+    pthread_mutex_t * lock = ((subpack_t *) pack)->lock;
+
+    message_t message;
+    char buffer[256];
+    char channel[250];
+    int bytes = 0;
+    char found;
+
+    struct AES_ctx context;
+    const char * key = "01234567012345670123456701234567";  // Test key (32 bytes)
+    const char * iv = "0123456701234567";   // Test IV (16 bytes)
+
+    // Wait for and handle incoming relayed messages
+    while (1)
+    {
+        // Clear buffers
+        memset(buffer, 0, sizeof(buffer));
+        memset(channel, 0, sizeof(channel));
+        found = 0;
+
+        //// GET CHANNEL /////////////////////////////////////////////////////////////////
+        if ((bytes = read(core->sock, buffer, sizeof(buffer))) != sizeof(buffer))       //
+        {                                                                               //
+            debug_output("Invalid channel read, rval: [%d]!\n", bytes);                 //
+            continue;                                                                   //
+        }                                                                               //
+                                                                                        //
+        message_initialize(&message);                                                   //
+        memcpy(message.message_string, buffer, 256);                                    //
+                                                                                        //
+        // Decrypt message (AES256)                                                     //
+        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);         //
+        AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);      //
+                                                                                        //
+        // Generate message struct from message                                         //
+        message_unpack(&message);                                                       //
+                                                                                        //
+        strcpy(channel, message.payload);                                               //
+        //////////////////////////////////////////////////////////////////////////////////
+
+        //// GET PAYLOAD /////////////////////////////////////////////////////////////////
+        if ((bytes = read(core->sock, buffer, sizeof(buffer))) != sizeof(buffer))       //
+        {                                                                               //
+            debug_output("Invalid payload read, rval: [%d]!\n", bytes);                 //
+            continue;                                                                   //
+        }                                                                               //
+                                                                                        //
+        message_initialize(&message);                                                   //
+        memcpy(message.message_string, buffer, 256);                                    //
+                                                                                        //
+        // Decrypt message (AES256)                                                     //
+        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);         //
+        AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);      //
+                                                                                        //
+        // Generate message struct from message                                         //
+        message_unpack(&message);                                                       //
+        //////////////////////////////////////////////////////////////////////////////////
+
+        pthread_mutex_lock(lock);
+
+        // Invoke callback function for the received channel
+        for (int i = 0; i < *size; ++i)
+        {
+            if (strcmp(subs[i].channel, channel) == 0)
+            {
+                found = 1;
+
+                subs[i].callback(message.payload);
+
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            // TODO: Unsubscribe from channel, this device is not actually subscribed
+        }
+
+        pthread_mutex_unlock(lock);
+    }
+
+    return NULL;
+}
+
 unsigned long get_interface()
 {
     struct ifaddrs *if_addr, *ifa;
@@ -196,7 +285,7 @@ int start_discovery_server(int port)
     return 1;
 }
 
-void _network_traverse(void * v_key, void * v_value)
+static void _network_traverse(void * v_key, void * v_value)
 {
     char * key = (char *) v_key;
     channel_t * array = (channel_t *) v_value;
@@ -273,6 +362,7 @@ int start_core_server(int port)
     int client_size = sizeof(struct sockaddr);
 
     char buffer[256];
+    char desbuf[256];
     int bytes = 0;
 
     char channel[250];
@@ -308,6 +398,7 @@ int start_core_server(int port)
     {
         // Clear buffers
         memset(buffer, 0, sizeof(buffer));
+        memset(desbuf, 0, sizeof(buffer));
         memset(channel, 0, sizeof(channel));
 
         debug_output("\n");
@@ -326,7 +417,6 @@ int start_core_server(int port)
             if (bytes)
             {
                 debug_output("Invalid initial read, rval: [%d]!\n", bytes);
-
             }
             else
             {
@@ -347,6 +437,7 @@ int start_core_server(int port)
         // Generate message struct from message
         message_unpack(&message);
 
+        strcpy(desbuf, buffer);
         strcpy(channel, message.payload);
 
         switch (message.source_id)
@@ -358,8 +449,7 @@ int start_core_server(int port)
         // Message is a "Publish" message
 
             // Read payload message
-            bytes = read(handle, buffer, sizeof(buffer));
-            if (bytes != sizeof(buffer))
+            if ((bytes = read(handle, buffer, sizeof(buffer))) != sizeof(buffer))
             {
                 debug_output("Invalid payload read, rval: [%d]!\n", bytes);
                 close(handle);
@@ -389,14 +479,15 @@ int start_core_server(int port)
             else
             // Relay message to all devices subscribed to the target channel
             {
-                debug_output("Relaying message from channel [%s] to [%d] devices!\n", channel, channel_target->size);
-
                 channel_target = (channel_t *) search.value;
                 found = 0;
 
+                debug_output("Relaying message from channel [%s] to [%d] devices!\n", channel, channel_target->size);
+
                 for (int i = 0; i < channel_target->size && !found; ++i)
                 {
-                    if (_send_to_node(&(channel_target->nodes[i]), buffer, 256))
+                    if (_send_to_node(&(channel_target->nodes[i]), desbuf, 256)
+                    ||  _send_to_node(&(channel_target->nodes[i]), buffer, 256))
                     // Message failed to send
                     {
                         debug_output("Failed to relay message from channel [%s] to device [%x]!\n", channel, channel_target->nodes[i].node_id);
@@ -534,8 +625,8 @@ int start_core_server(int port)
                             if (channel_target->size == 1)
                             // Device is the only subscribed device
                             {
-                                close(channel_target->nodes[i].sock);
-                                free(channel_target->nodes[i].addr);
+                                close(channel_target->nodes[0].sock);
+                                free(channel_target->nodes[0].addr);
                                 free(channel_target->nodes);
                                 ht_remove(&table, channel);
 
@@ -733,12 +824,51 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
     const char * key = "01234567012345670123456701234567";  // 32 bytes
     const char * iv = "0123456701234567";   // 16 bytes
 
+    static char init = 0;
+    static subpack_t pack;
+
+    pthread_t listener;
+
     if (core && channel && callback)
     {
         if (strlen(channel) >= 250)
         {
             debug_output("Cannot subscribe to channel name of length 250 or greater!\n");
             return 1;
+        }
+
+        /*
+         * Set up listener server
+         */
+
+        if (!init)
+        {
+            pack.core = core;
+            pack.size = 1;
+            pack.subs = calloc(1, sizeof(subscription_t));
+
+            strcpy(pack.subs[0].channel, channel);
+            pack.subs[0].callback = callback;
+
+            pthread_mutex_init(pack.lock, NULL);
+
+            if (pthread_create(&listener, NULL, &_subscription_listener, (void *) &pack))
+            {
+                debug_output("Could not create listener thread!\n");
+                return 1;
+            }
+
+            init = 1;
+        }
+        else
+        {
+            pthread_mutex_lock(pack.lock);
+
+            pack.subs = realloc(pack.subs, (pack.size + 1) * sizeof(subscription_t));
+            strcpy(pack.subs[pack.size].channel, channel);
+            pack.subs[pack.size].callback = callback;
+
+            pthread_mutex_unlock(pack.lock);
         }
 
         /*

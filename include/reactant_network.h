@@ -12,6 +12,8 @@
 #include <netdb.h>
 #include <signal.h>
 #include <errno.h>
+#include <pthread.h>
+
 #include <exsrc_aes.h>
 
 #include "reactant_util.h"
@@ -39,6 +41,22 @@ typedef struct _channel_t
     node_t * nodes;
 
 } channel_t;
+
+typedef struct _subscription_t
+{
+    char * channel;
+    void (*callback)(char *);
+
+} subscription_t;
+
+typedef struct _subpack_t
+{
+    core_t * core;
+    int size;
+    subscription_t * subs;
+    pthread_mutex_t * lock;
+
+} subpack_t;
 
 unsigned long get_interface();
 int start_discovery_server(int port);
