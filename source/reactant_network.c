@@ -28,6 +28,7 @@ static int _send_to_core(core_t * core, char * message, int size)
                         debug_output("An unknown error occurred while attempting to publish to the Core!\n");
                 }
 
+                close(core->sock);
                 return 1;
             }
         }
