@@ -450,6 +450,8 @@ int start_core_server(int port)
         case 0:
         // Message is a "Publish" message
 
+            debug_output("Publish message received!\n");
+
             // Read payload message
             if ((bytes = read(handle, buffer, sizeof(buffer))) != sizeof(buffer))
             {
@@ -540,6 +542,8 @@ int start_core_server(int port)
          */
         default:
         // Message is a "Subscribe" message
+
+            debug_output("Subscribe message received!\n");
 
             mode = (message.source_id & 0x7FFF) >> 15; // Subscribe = 0, unsubscribe = 1
             message.source_id &= 0x7FFF; // Ignore MSB of source_id field
