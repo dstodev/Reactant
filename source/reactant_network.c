@@ -73,12 +73,12 @@ static int _send_to_node(node_t * node, char * message, int size)
                 close(node->sock);
                 return 1;
             }
-            else
-            {
-                // Connection to Node was never established
-                debug_output("Connection to the Node [%x] has not yet been established!\n", node->node_id);
-                return 1;
-            }
+        }
+        else
+        {
+            // Connection to Node was never established
+            debug_output("Connection to Node [%x] has not yet been established!\n", node->node_id);
+            return 1;
         }
     }
     else
@@ -174,6 +174,8 @@ static void * _subscription_listener(void * pack)
         //////////////////////////////////////////////////////////////////////////////////
 
         pthread_mutex_lock(lock);
+
+        debug_output("Looking for channel [%s]!\n", channel);
 
         // Invoke callback function for the received channel
         for (int i = 0; i < *size; ++i)
@@ -846,6 +848,7 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
             pack.core = core;
             pack.size = 1;
             pack.subs = calloc(1, sizeof(subscription_t));
+            pack.lock = calloc(1, sizeof(pthread_mutex_t));
 
             strcpy(pack.subs[0].channel, channel);
             pack.subs[0].callback = callback;

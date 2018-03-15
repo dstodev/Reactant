@@ -44,7 +44,7 @@ typedef struct _channel_t
 
 typedef struct _subscription_t
 {
-    char * channel;
+    char channel[250];
     void (*callback)(char *);
 
 } subscription_t;
