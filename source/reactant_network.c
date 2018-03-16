@@ -525,6 +525,9 @@ int start_core_server(int port)
                     {
                         // Read 0 bytes; Node terminated connection
                         debug_output("Node terminated connection!\n");
+
+                        FD_CLR(handle, &active_fds);
+                        close(handle);
                     }
 
                     continue;
