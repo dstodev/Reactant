@@ -70,7 +70,6 @@ static int _send_to_node(node_t * node, char * message, int size)
                         debug_output("An unknown error occurred while attempting to write to Node [%x]!\n", node->node_id);
                 }
 
-                close(node->sock);
                 return 1;
             }
         }
@@ -481,7 +480,7 @@ int start_core_server(int port)
         read_fds = active_fds;
         if ((rval = select(max_fd + 1, &read_fds, NULL, NULL, NULL)) < 0)
         {
-            debug_output("Failed to select incoming IO!: [%d]\n", rval);
+            debug_output("Failed to select incoming IO!: [%d]\n", errno);
             continue;
         }
 
@@ -528,8 +527,6 @@ int start_core_server(int port)
                         debug_output("Node terminated connection!\n");
                     }
 
-                    FD_CLR(handle, &active_fds);
-                    close(handle);
                     continue;
                 }
 
@@ -601,7 +598,6 @@ int start_core_server(int port)
                                 if (channel_target->size == 1)
                                 // Device is the only subscribed device
                                 {
-                                    close(channel_target->nodes[0].sock);
                                     free(channel_target->nodes[0].addr);
                                     free(channel_target->nodes);
                                     ht_remove(&table, channel);
@@ -614,7 +610,6 @@ int start_core_server(int port)
                                 // Device is not the only subscribed device
                                 {
                                     // Free Node elements
-                                    close(channel_target->nodes[i].sock);
                                     free(channel_target->nodes[i].addr);
 
                                     // Patch array
@@ -732,7 +727,6 @@ int start_core_server(int port)
                                     if (channel_target->size == 1)
                                     // Device is the only subscribed device
                                     {
-                                        close(channel_target->nodes[0].sock);
                                         free(channel_target->nodes[0].addr);
                                         free(channel_target->nodes);
                                         ht_remove(&table, channel);
@@ -743,7 +737,6 @@ int start_core_server(int port)
                                     // Device is not the only subscribed device
                                     {
                                         // Free Node elements
-                                        close(channel_target->nodes[i].sock);
                                         free(channel_target->nodes[i].addr);
 
                                         // Patch array
