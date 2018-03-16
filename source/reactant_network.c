@@ -416,6 +416,8 @@ int start_core_server(int port)
     char mode;
     char found;
 
+    int yes = 1;
+
     struct sockaddr_in server_addr, client_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons((uint16_t) port);
@@ -424,6 +426,12 @@ int start_core_server(int port)
 
     // Ignore SIGPIPE signals
     signal(SIGPIPE, SIG_IGN);
+
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
+    {
+        debug_output("Could not set socket options!\n");
+        return 1;
+    }
 
     // Bind server socket to the given port
     if (bind(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
