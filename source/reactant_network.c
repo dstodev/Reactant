@@ -346,7 +346,7 @@ int discover_server(int port)
     return 0;
 }
 
-static void * _aggregate_fds(void * key, void * value)
+/*static void * _aggregate_fds(void * key, void * value)
 {
     static fds rval;
     static char clean = 1;
@@ -384,7 +384,7 @@ static void * _aggregate_fds(void * key, void * value)
     }
 
     return NULL;
-}
+}*/
 
 int start_core_server(int port)
 {
@@ -397,7 +397,10 @@ int start_core_server(int port)
     message_t message;
     hash_data_t search;
     channel_t  * channel_target;
-    fds * fd_list;
+    //fds * fd_list;
+    int max_fd;
+    fd_set active_fds;
+    fd_set read_fds;
 
     struct AES_ctx context;
     const char * key = "01234567012345670123456701234567";  // Test key (32 bytes)
@@ -449,6 +452,9 @@ int start_core_server(int port)
         return 1;
     }
 
+    FD_ZERO(&active_fds);
+    max_fd = sock;
+
     debug_output("\nCore initialized, awaiting connections...\n");
 
     while(1)
@@ -461,7 +467,7 @@ int start_core_server(int port)
         debug_output("\n");
 
         // Acquire all file descriptors of currently subscribed devices
-        _aggregate_fds(NULL, NULL);
+        /*_aggregate_fds(NULL, NULL);
         ht_traverse(&table, &_aggregate_fds);
         fd_list = _aggregate_fds(NULL, NULL);
 
@@ -469,18 +475,23 @@ int start_core_server(int port)
         if (sock > fd_list->max_fd)
         {
             fd_list->max_fd = sock;
-        }
+        }*/
+
+        //if (select(fd_list->max_fd + 1, &fd_list->set, NULL, NULL, NULL) < 0)
 
         // Wait for incoming connections
-        if (select(fd_list->max_fd + 1, &fd_list->set, NULL, NULL, NULL) < 0)
+        read_fds = active_fds;
+        if (select(max_fd, &read_fds, NULL, NULL, NULL) < 0)
         {
             debug_output("Failed to select incoming IO!\n");
             continue;
         }
 
-        for (int s = 0; s < fd_list->max_fd + 1; ++s)
+        //for (int s = 0; s < fd_list->max_fd + 1; ++s)
+        for (int s = 0; s < max_fd + 1; ++s)
         {
-            if (FD_ISSET(s, &fd_list->set))
+            //if (FD_ISSET(s, &fd_list->set))
+            if (FD_ISSET(s, &read_fds))
             {
                 if (s == sock)
                 // Incoming new connection
@@ -492,6 +503,7 @@ int start_core_server(int port)
                     }
                     else
                     {
+                        FD_SET(handle, &active_fds);
                         debug_output("Acquired new connection!\n");
                     }
                 }
@@ -513,6 +525,7 @@ int start_core_server(int port)
                         debug_output("Node terminated connection before communication!\n");
                     }
 
+                    FD_CLR(handle, &active_fds);
                     close(handle);
                     continue;
                 }
@@ -544,7 +557,7 @@ int start_core_server(int port)
                     if ((bytes = read(handle, buffer, sizeof(buffer))) != sizeof(buffer))
                     {
                         debug_output("Invalid payload read, rval: [%d]!\n", bytes);
-                        close(handle);
+                        //close(handle);
                         continue;
                     }
 
