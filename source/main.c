@@ -57,8 +57,11 @@ void node_test()
     if (!start_node_client(&core, 0x741, "192.168.1.105", 10112)) // 192.168.1.105
     {
         publish(&core, "chat1", "this is a test");
-        //subscribe(&core, "chat1", &_node_callback);
+        subscribe(&core, "chat1", &_node_callback);
         publish(&core, "chat1", "this is a test");
+        publish(&core, "chat2", "this is a test2");
+        subscribe(&core, "chat2", &_node_callback);
+        publish(&core, "chat2", "this is a test2");
 
         usleep(100000);
 

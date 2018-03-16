@@ -111,12 +111,9 @@ static uint8_t _compare_channel(void * lhs, void * rhs)
     return (strcmp((char *) lhs, (char *) rhs) == 0);
 }
 
-static void * _subscription_listener(void * pack)
+static void * _subscription_listener(void * _pack)
 {
-    core_t * core = ((subpack_t *) pack)->core;
-    int * size = &(((subpack_t *) pack)->size);
-    subscription_t * subs = ((subpack_t *) pack)->subs;
-    pthread_mutex_t * lock = ((subpack_t *) pack)->lock;
+    subpack_t * pack = (subpack_t *) _pack;
 
     message_t message;
     char buffer[256];
@@ -137,7 +134,7 @@ static void * _subscription_listener(void * pack)
         found = 0;
 
         //// GET CHANNEL /////////////////////////////////////////////////////////////////
-        if ((bytes = read(core->sock, buffer, sizeof(buffer))) != sizeof(buffer))       //
+        if ((bytes = read(pack->core->sock, buffer, sizeof(buffer))) != sizeof(buffer)) //
         {                                                                               //
             debug_output("Invalid channel read, rval: [%d]!\n", bytes);                 //
             continue;                                                                   //
@@ -157,7 +154,7 @@ static void * _subscription_listener(void * pack)
         //////////////////////////////////////////////////////////////////////////////////
 
         //// GET PAYLOAD /////////////////////////////////////////////////////////////////
-        if ((bytes = read(core->sock, buffer, sizeof(buffer))) != sizeof(buffer))       //
+        if ((bytes = read(pack->core->sock, buffer, sizeof(buffer))) != sizeof(buffer)) //
         {                                                                               //
             debug_output("Invalid payload read, rval: [%d]!\n", bytes);                 //
             continue;                                                                   //
@@ -174,18 +171,18 @@ static void * _subscription_listener(void * pack)
         message_unpack(&message);                                                       //
         //////////////////////////////////////////////////////////////////////////////////
 
-        pthread_mutex_lock(lock);
+        pthread_mutex_lock(pack->lock);
 
         debug_output("Looking for channel [%s]!\n", channel);
 
         // Invoke callback function for the received channel
-        for (int i = 0; i < *size; ++i)
+        for (int i = 0; i < pack->size; ++i)
         {
-            if (strcmp(subs[i].channel, channel) == 0)
+            if (strcmp(pack->subs[i].channel, channel) == 0)
             {
                 found = 1;
 
-                subs[i].callback(message.payload);
+                pack->subs[i].callback(message.payload);
 
                 break;
             }
@@ -196,7 +193,7 @@ static void * _subscription_listener(void * pack)
             // TODO: Unsubscribe from channel, this device is not actually subscribed
         }
 
-        pthread_mutex_unlock(lock);
+        pthread_mutex_unlock(pack->lock);
     }
 
     return NULL;
@@ -527,7 +524,8 @@ int start_core_server(int port)
                     }
                     else
                     {
-                        debug_output("Node terminated connection before communication!\n");
+                        // Read 0 bytes; Node terminated connection
+                        debug_output("Node terminated connection!\n");
                     }
 
                     FD_CLR(handle, &active_fds);
@@ -562,11 +560,8 @@ int start_core_server(int port)
                     if ((bytes = read(handle, buffer, sizeof(buffer))) != sizeof(buffer))
                     {
                         debug_output("Invalid payload read, rval: [%d]!\n", bytes);
-                        //close(handle);
                         continue;
                     }
-
-                    //close(handle);
 
                     message_initialize(&message);
                     memcpy(message.message_string, buffer, 256);
@@ -991,6 +986,7 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
             pack.subs = realloc(pack.subs, (pack.size + 1) * sizeof(subscription_t));
             strcpy(pack.subs[pack.size].channel, channel);
             pack.subs[pack.size].callback = callback;
+            pack.size += 1;
 
             pthread_mutex_unlock(pack.lock);
         }
