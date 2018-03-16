@@ -425,7 +425,7 @@ int start_core_server(int port)
     memset(server_addr.sin_zero, 0, sizeof(server_addr.sin_zero));
 
     // Ignore SIGPIPE signals
-    //signal(SIGPIPE, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN);
 
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
     {
@@ -786,7 +786,7 @@ int start_node_client(core_t * core, unsigned int id, char * ip, int port)
     if (core && ip)
     {
         // Ignore SIGPIPE signals
-        //signal(SIGPIPE, SIG_IGN);
+        signal(SIGPIPE, SIG_IGN);
 
         // Clear core struct
         memset(core, 0, sizeof(*core));
