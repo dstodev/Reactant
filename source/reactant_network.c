@@ -505,6 +505,10 @@ int start_core_server(int port)
                     else
                     {
                         FD_SET(handle, &active_fds);
+                        if (handle > max_fd)
+                        {
+                            max_fd = handle;
+                        }
                         debug_output("Acquired new connection!\n");
                     }
                 }
