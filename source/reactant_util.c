@@ -396,7 +396,7 @@ int ht_remove(hash_table_t * hash_table, void * key)
  *  Description:    Traverses the given hash table, giving each key and value
  *                  to the given function
  ******************************************************************************/
-int ht_traverse(hash_table_t * hash_table, void (*visit)(void *, void *))
+int ht_traverse(hash_table_t * hash_table, void * (*visit)(void *, void *))
 {
     int i;
     hash_data_t * position;

@@ -7,14 +7,13 @@ const int TABLE_SIZE = 10;
 // Private helper functions
 static int _send_to_core(core_t * core, char * message, int size)
 {
+    int bytes;
+
     if (core && message)
     {
-        // Ignore SIGPIPE signals
-        signal(SIGPIPE, SIG_IGN);
-
         if (core->sock)
         {
-            if (write(core->sock, message, size) < 0)
+            if ((bytes = write(core->sock, message, size)) != size)
             {
                 switch (errno)
                 {
@@ -42,6 +41,7 @@ static int _send_to_core(core_t * core, char * message, int size)
     else
     {
         // Invalid parameters
+        debug_output("<_send_to_core> Invalid parameter(s)!\n");
         return 1;
     }
 
@@ -50,14 +50,13 @@ static int _send_to_core(core_t * core, char * message, int size)
 
 static int _send_to_node(node_t * node, char * message, int size)
 {
+    int bytes;
+
     if (node && message)
     {
-        // Ignore SIGPIPE signals
-        signal(SIGPIPE, SIG_IGN);
-
         if (node->sock)
         {
-            if (write(node->sock, message, size) < 0)
+            if ((bytes = write(node->sock, message, size)) != size)
             {
                 switch (errno)
                 {
@@ -85,6 +84,7 @@ static int _send_to_node(node_t * node, char * message, int size)
     else
     {
         // Invalid parameters
+        debug_output("<_send_to_node> Invalid parameter(s)!\n");
         return 1;
     }
 
@@ -288,7 +288,7 @@ int start_discovery_server(int port)
     return 1;
 }
 
-static void _network_traverse(void * v_key, void * v_value)
+static void * _network_traverse(void * v_key, void * v_value)
 {
     char * key = (char *) v_key;
     channel_t * array = (channel_t *) v_value;
@@ -303,6 +303,8 @@ static void _network_traverse(void * v_key, void * v_value)
         }
     }
     debug_output("\n");
+
+    return NULL;
 }
 
 int discover_server(int port)
@@ -344,6 +346,46 @@ int discover_server(int port)
     return 0;
 }
 
+static void * _aggregate_fds(void * key, void * value)
+{
+    static fds rval;
+    static char clean = 1;
+
+    channel_t * channel = (channel_t *) value;
+    int fd;
+
+    if (clean)
+    {
+        rval.max_fd = 0;
+        FD_ZERO(&rval.set);
+        clean = 0;
+    }
+
+    if (key && value) // Both parameters set
+    {
+        for (int i = 0; i < channel->size; ++i)
+        {
+            fd = channel->nodes[i].sock;
+
+            FD_SET(fd, &rval.set);
+            if (fd > rval.max_fd)
+            {
+                rval.max_fd = fd;
+            }
+        }
+
+        return NULL;
+    }
+    else if (!key && !value) // Both parameters NULL
+    {
+        clean = 1;
+
+        return &rval;
+    }
+
+    return NULL;
+}
+
 int start_core_server(int port)
 {
     int rval;
@@ -355,6 +397,7 @@ int start_core_server(int port)
     message_t message;
     hash_data_t search;
     channel_t  * channel_target;
+    fds * fd_list;
 
     struct AES_ctx context;
     const char * key = "01234567012345670123456701234567";  // Test key (32 bytes)
@@ -379,6 +422,9 @@ int start_core_server(int port)
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     memset(server_addr.sin_zero, 0, sizeof(server_addr.sin_zero));
 
+    // Ignore SIGPIPE signals
+    signal(SIGPIPE, SIG_IGN);
+
     // Bind server socket to the given port
     if (bind(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
     {
@@ -401,275 +447,305 @@ int start_core_server(int port)
     {
         // Clear buffers
         memset(buffer, 0, sizeof(buffer));
-        memset(desbuf, 0, sizeof(buffer));
+        memset(desbuf, 0, sizeof(desbuf));
         memset(channel, 0, sizeof(channel));
 
         debug_output("\n");
 
-        // Wait for incoming connections
-        if ((handle = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_size)) < 0)
+        // Acquire all file descriptors of currently subscribed devices
+        _aggregate_fds(NULL, NULL);
+        ht_traverse(&table, &_aggregate_fds);
+        fd_list = _aggregate_fds(NULL, NULL);
+
+        FD_SET(sock, &fd_list->set);
+        if (sock > fd_list->max_fd)
         {
-            debug_output("Failed to accept incoming connection!\n");
-            close(sock);
-            return 1;
+            fd_list->max_fd = sock;
         }
 
-        // Read incoming message
-        if ((bytes = read(handle, buffer, sizeof(buffer))) != sizeof(buffer))
+        // Wait for incoming connections
+        if (select(fd_list->max_fd + 1, &fd_list->set, NULL, NULL, NULL) < 0)
         {
-            if (bytes)
-            {
-                debug_output("Invalid initial read, rval: [%d]!\n", bytes);
-            }
-            else
-            {
-                debug_output("Node terminated connection before communication!\n");
-            }
-
-            close(handle);
+            debug_output("Failed to select incoming IO!\n");
             continue;
         }
 
-        message_initialize(&message);
-        memcpy(message.message_string, buffer, 256);
-
-        // Decrypt message (AES256)
-        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-        AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);
-
-        // Generate message struct from message
-        message_unpack(&message);
-
-        strcpy(desbuf, buffer);
-        strcpy(channel, message.payload);
-
-        switch (message.source_id)
+        for (int s = 0; s < fd_list->max_fd + 1; ++s)
         {
-        /*
-         *  PUBLISH
-         */
-        case 0:
-        // Message is a "Publish" message
-
-            debug_output("Publish message received!\n");
-
-            // Read payload message
-            if ((bytes = read(handle, buffer, sizeof(buffer))) != sizeof(buffer))
+            if (FD_ISSET(s, &fd_list->set))
             {
-                debug_output("Invalid payload read, rval: [%d]!\n", bytes);
-                close(handle);
-                continue;
-            }
-
-            close(handle);
-
-            message_initialize(&message);
-            memcpy(message.message_string, buffer, 256);
-
-            // Decrypt message (AES256)
-            AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-            AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);
-
-            // Generate message struct from message
-            message_unpack(&message);
-
-            debug_output("Publishing message [%s] to channel [%s]!\n", message.payload, channel);
-
-            // Find channel in table
-            if (ht_search(&table, &search, channel) == HT_DNE)
-            // Channel hasn't been created yet; no devices are subscribed to the target channel
-            {
-                debug_output("No devices are subscribed to channel [%s]!\n", channel);
-            }
-            else
-            // Relay message to all devices subscribed to the target channel
-            {
-                channel_target = (channel_t *) search.value;
-                found = 0;
-
-                debug_output("Relaying message from channel [%s] to [%d] devices!\n", channel, channel_target->size);
-
-                for (int i = 0; i < channel_target->size && !found; ++i)
+                if (s == sock)
+                // Incoming new connection
                 {
-                    if (_send_to_node(&(channel_target->nodes[i]), desbuf, 256)
-                    ||  _send_to_node(&(channel_target->nodes[i]), buffer, 256))
-                    // Message failed to send
+                    if ((handle = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *) &client_size)) < 0)
                     {
-                        debug_output("Failed to relay message from channel [%s] to device [%x]!\n", channel, channel_target->nodes[i].node_id);
+                        debug_output("Failed to accept incoming connection!\n");
+                        continue;
+                    }
+                }
+                else
+                {
+                    handle = s;
+                }
 
-                        // Remove device from array
-                        if (channel_target->size == 1)
-                        // Device is the only subscribed device
-                        {
-                            close(channel_target->nodes[0].sock);
-                            free(channel_target->nodes[0].addr);
-                            free(channel_target->nodes);
-                            ht_remove(&table, channel);
-
-                            found = 1;
-
-                            debug_output("Channel [%s] has no subscribers. Removed!\n", channel);
-                        }
-                        else
-                        // Device is not the only subscribed device
-                        {
-                            // Free Node elements
-                            close(channel_target->nodes[i].sock);
-                            free(channel_target->nodes[i].addr);
-
-                            // Patch array
-                            for (int j = i; j < channel_target->size - 1; ++j)
-                            {
-                                channel_target->nodes[i] = channel_target->nodes[i + 1];
-                            }
-
-                            // Free element
-                            channel_target->nodes = realloc(channel_target->nodes, (channel_target->size - 1) * sizeof(node_t));
-
-                            channel_target->size -= 1;
-                        }
-                        ht_traverse(&table, &_network_traverse);
+                // Read incoming message
+                if ((bytes = read(handle, buffer, sizeof(buffer))) != sizeof(buffer))
+                {
+                    if (bytes)
+                    {
+                        debug_output("Invalid initial read, rval: [%d]!\n", bytes);
                     }
                     else
                     {
-                        debug_output("Message published to channel [%s] relayed to device [%x]!\n", channel, channel_target->nodes[i].node_id);
+                        debug_output("Node terminated connection before communication!\n");
                     }
+
+                    close(handle);
+                    continue;
                 }
-            }
-            break;
 
-        /*
-         *  SUBSCRIBE
-         */
-        default:
-        // Message is a "Subscribe" message
+                message_initialize(&message);
+                memcpy(message.message_string, buffer, 256);
 
-            debug_output("Subscribe message received!\n");
+                // Decrypt message (AES256)
+                AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+                AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);
 
-            mode = (message.source_id & 0x7FFF) >> 15; // Subscribe = 0, unsubscribe = 1
-            message.source_id &= 0x7FFF; // Ignore MSB of source_id field
+                // Generate message struct from message
+                message_unpack(&message);
 
-            if ((rval = ht_search(&table, &search, channel)) == HT_DNE)
-            // Channel doesn't yet exist in table
-            {
-                if (!mode)
-                // Subscribe
+                strcpy(desbuf, buffer);
+                strcpy(channel, message.payload);
+
+                switch (message.source_id)
                 {
-                    channel_target = calloc(1, sizeof(channel_t));
-                    channel_target->size = 1;
+                /*
+                 *  PUBLISH
+                 */
+                case 0:
+                // Message is a "Publish" message
 
-                    // TODO: Free the following allocated memory
-                    channel_target->nodes = calloc(1, sizeof(node_t));
+                    debug_output("Publish message received!\n");
 
-                    channel_target->nodes[0].addr = calloc(1, sizeof(struct sockaddr_in));
-                    *(channel_target->nodes[0].addr) = client_addr;
-                    channel_target->nodes[0].sock = handle;
-                    channel_target->nodes[0].node_id = message.source_id;
-
-                    ht_insert(&table, channel, channel_target);
-                    free(channel_target);
-
-                    debug_output("Channel [%s] created and device [%x] subscribed!\n", channel, message.source_id);
-                    ht_traverse(&table, &_network_traverse);
-                }
-                else
-                // Unsubscribe
-                {
-                    debug_output("Device [%x] cannot unsubscribe from channel [%s], channel does not exist!\n", message.source_id, channel);
-                }
-            }
-            else if (rval == SUCCESS)
-            // Channel exists in table
-            {
-                if(!mode)
-                // Subscribe
-                {
-                    channel_target = (channel_t *) search.value;
-                    found = 0;
-
-                    // If device already exists, update address
-                    for (int i = 0; i < channel_target->size; ++i)
+                    // Read payload message
+                    if ((bytes = read(handle, buffer, sizeof(buffer))) != sizeof(buffer))
                     {
-                        if (channel_target->nodes[i].node_id == message.source_id)
+                        debug_output("Invalid payload read, rval: [%d]!\n", bytes);
+                        close(handle);
+                        continue;
+                    }
+
+                    close(handle);
+
+                    message_initialize(&message);
+                    memcpy(message.message_string, buffer, 256);
+
+                    // Decrypt message (AES256)
+                    AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+                    AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+
+                    // Generate message struct from message
+                    message_unpack(&message);
+
+                    debug_output("Publishing message [%s] to channel [%s]!\n", message.payload, channel);
+
+                    // Find channel in table
+                    if (ht_search(&table, &search, channel) == HT_DNE)
+                    // Channel hasn't been created yet; no devices are subscribed to the target channel
+                    {
+                        debug_output("No devices are subscribed to channel [%s]!\n", channel);
+                    }
+                    else
+                    // Relay message to all devices subscribed to the target channel
+                    {
+                        channel_target = (channel_t *) search.value;
+                        found = 0;
+
+                        debug_output("Relaying message from channel [%s] to [%d] devices!\n", channel, channel_target->size);
+
+                        for (int i = 0; i < channel_target->size && !found; ++i)
                         {
-                            found = 1;
-
-                            *(channel_target->nodes[i].addr) = client_addr;
-                            channel_target->nodes[i].sock = handle;
-
-                            debug_output("Device [%x] subscription to channel [%s] updated!\n", message.source_id, channel);
-                            ht_traverse(&table, &_network_traverse);
-                            break;
-                        }
-                    }
-
-                    if (!found)
-                    // Device does not yet exist in array of subscribers
-                    {
-                        channel_target->nodes = realloc(channel_target->nodes, (channel_target->size + 1) * sizeof(node_t));
-
-                        channel_target->nodes[channel_target->size].addr = calloc(1, sizeof(struct sockaddr_in));
-                        *(channel_target->nodes[channel_target->size].addr) = client_addr;
-                        channel_target->nodes[channel_target->size].sock = handle;
-                        channel_target->nodes[channel_target->size].node_id = message.source_id;
-
-                        channel_target->size += 1;
-
-                        debug_output("Device [%x] subscribed to channel [%s]!\n", message.source_id, channel);
-                        ht_traverse(&table, &_network_traverse);
-                    }
-                }
-                else
-                // Unsubscribe
-                {
-                    channel_target = (channel_t *) search.value;
-
-                    // Find index of subscribed device and remove it from array
-                    for (int i = 0; i < channel_target->size; ++i)
-                    {
-                        if (channel_target->nodes[i].node_id == message.source_id)
-                        {
-                            if (channel_target->size == 1)
-                            // Device is the only subscribed device
+                            if (_send_to_node(&(channel_target->nodes[i]), desbuf, 256)
+                            ||  _send_to_node(&(channel_target->nodes[i]), buffer, 256))
+                            // Message failed to send
                             {
-                                close(channel_target->nodes[0].sock);
-                                free(channel_target->nodes[0].addr);
-                                free(channel_target->nodes);
-                                ht_remove(&table, channel);
+                                debug_output("Failed to relay message from channel [%s] to device [%x]!\n", channel, channel_target->nodes[i].node_id);
 
-                                debug_output("Channel [%s] has no subscribers. Removed!\n", channel);
+                                // Remove device from array
+                                if (channel_target->size == 1)
+                                // Device is the only subscribed device
+                                {
+                                    close(channel_target->nodes[0].sock);
+                                    free(channel_target->nodes[0].addr);
+                                    free(channel_target->nodes);
+                                    ht_remove(&table, channel);
+
+                                    found = 1;
+
+                                    debug_output("Channel [%s] has no subscribers. Removed!\n", channel);
+                                }
+                                else
+                                // Device is not the only subscribed device
+                                {
+                                    // Free Node elements
+                                    close(channel_target->nodes[i].sock);
+                                    free(channel_target->nodes[i].addr);
+
+                                    // Patch array
+                                    for (int j = i; j < channel_target->size - 1; ++j)
+                                    {
+                                        channel_target->nodes[i] = channel_target->nodes[i + 1];
+                                    }
+
+                                    // Free element
+                                    channel_target->nodes = realloc(channel_target->nodes, (channel_target->size - 1) * sizeof(node_t));
+
+                                    channel_target->size -= 1;
+                                }
+                                ht_traverse(&table, &_network_traverse);
                             }
                             else
-                            // Device is not the only subscribed device
                             {
-                                // Free Node elements
-                                close(channel_target->nodes[i].sock);
-                                free(channel_target->nodes[i].addr);
-
-                                // Patch array
-                                for (int j = i; j < channel_target->size - 1; ++j)
-                                {
-                                    channel_target->nodes[i] = channel_target->nodes[i + 1];
-                                }
-
-                                // Free element
-                                channel_target->nodes = realloc(channel_target->nodes, (channel_target->size - 1) * sizeof(node_t));
-
-                                channel_target->size -= 1;
+                                debug_output("Message published to channel [%s] relayed to device [%x]!\n", channel, channel_target->nodes[i].node_id);
                             }
-
-                            break;
                         }
                     }
-                    debug_output("Device [%x] unsubscribed to channel [%s]!\n", message.source_id, channel);
+                    break;
+
+                /*
+                 *  SUBSCRIBE
+                 */
+                default:
+                // Message is a "Subscribe" message
+
+                    debug_output("Subscribe message received!\n");
+
+                    mode = (message.source_id & 0x7FFF) >> 15; // Subscribe = 0, unsubscribe = 1
+                    message.source_id &= 0x7FFF; // Ignore MSB of source_id field
+
+                    if ((rval = ht_search(&table, &search, channel)) == HT_DNE)
+                    // Channel doesn't yet exist in table
+                    {
+                        if (!mode)
+                        // Subscribe
+                        {
+                            channel_target = calloc(1, sizeof(channel_t));
+                            channel_target->size = 1;
+
+                            // TODO: Free the following allocated memory
+                            channel_target->nodes = calloc(1, sizeof(node_t));
+
+                            channel_target->nodes[0].addr = calloc(1, sizeof(struct sockaddr_in));
+                            *(channel_target->nodes[0].addr) = client_addr;
+                            channel_target->nodes[0].sock = handle;
+                            channel_target->nodes[0].node_id = message.source_id;
+
+                            ht_insert(&table, channel, channel_target);
+                            free(channel_target);
+
+                            debug_output("Channel [%s] created and device [%x] subscribed!\n", channel, message.source_id);
+                            ht_traverse(&table, &_network_traverse);
+                        }
+                        else
+                        // Unsubscribe
+                        {
+                            debug_output("Device [%x] cannot unsubscribe from channel [%s], channel does not exist!\n", message.source_id, channel);
+                        }
+                    }
+                    else if (rval == SUCCESS)
+                    // Channel exists in table
+                    {
+                        if(!mode)
+                        // Subscribe
+                        {
+                            channel_target = (channel_t *) search.value;
+                            found = 0;
+
+                            // If device already exists, update address
+                            for (int i = 0; i < channel_target->size; ++i)
+                            {
+                                if (channel_target->nodes[i].node_id == message.source_id)
+                                {
+                                    found = 1;
+
+                                    *(channel_target->nodes[i].addr) = client_addr;
+                                    channel_target->nodes[i].sock = handle;
+
+                                    debug_output("Device [%x] subscription to channel [%s] updated!\n", message.source_id, channel);
+                                    ht_traverse(&table, &_network_traverse);
+                                    break;
+                                }
+                            }
+
+                            if (!found)
+                            // Device does not yet exist in array of subscribers
+                            {
+                                channel_target->nodes = realloc(channel_target->nodes, (channel_target->size + 1) * sizeof(node_t));
+
+                                channel_target->nodes[channel_target->size].addr = calloc(1, sizeof(struct sockaddr_in));
+                                *(channel_target->nodes[channel_target->size].addr) = client_addr;
+                                channel_target->nodes[channel_target->size].sock = handle;
+                                channel_target->nodes[channel_target->size].node_id = message.source_id;
+
+                                channel_target->size += 1;
+
+                                debug_output("Device [%x] subscribed to channel [%s]!\n", message.source_id, channel);
+                                ht_traverse(&table, &_network_traverse);
+                            }
+                        }
+                        else
+                        // Unsubscribe
+                        {
+                            channel_target = (channel_t *) search.value;
+
+                            // Find index of subscribed device and remove it from array
+                            for (int i = 0; i < channel_target->size; ++i)
+                            {
+                                if (channel_target->nodes[i].node_id == message.source_id)
+                                {
+                                    if (channel_target->size == 1)
+                                    // Device is the only subscribed device
+                                    {
+                                        close(channel_target->nodes[0].sock);
+                                        free(channel_target->nodes[0].addr);
+                                        free(channel_target->nodes);
+                                        ht_remove(&table, channel);
+
+                                        debug_output("Channel [%s] has no subscribers. Removed!\n", channel);
+                                    }
+                                    else
+                                    // Device is not the only subscribed device
+                                    {
+                                        // Free Node elements
+                                        close(channel_target->nodes[i].sock);
+                                        free(channel_target->nodes[i].addr);
+
+                                        // Patch array
+                                        for (int j = i; j < channel_target->size - 1; ++j)
+                                        {
+                                            channel_target->nodes[i] = channel_target->nodes[i + 1];
+                                        }
+
+                                        // Free element
+                                        channel_target->nodes = realloc(channel_target->nodes, (channel_target->size - 1) * sizeof(node_t));
+
+                                        channel_target->size -= 1;
+                                    }
+
+                                    break;
+                                }
+                            }
+                            debug_output("Device [%x] unsubscribed to channel [%s]!\n", message.source_id, channel);
+                        }
+                    }
+                    else
+                    {
+                        debug_output("An unknown error occurred when handling Subscription message: [%d]!\n", rval);
+                        break;
+                    }
+                    break;
                 }
             }
-            else
-            {
-                debug_output("An unknown error occurred when handling Subscription message: [%d]!\n", rval);
-                break;
-            }
-            break;
         }
     }
 
@@ -812,7 +888,16 @@ int publish(core_t * core, char * channel, char * payload)
         //message_debug_hex(message.message_string);
 
         // Send message
-        _send_to_core(core, message.message_string, 256);
+        if (_send_to_core(core, message.message_string, 256))
+        {
+            debug_output("Message could not be sent to Core!\n");
+        }
+        else
+        {
+            debug_output("Message sent to Core!\n");
+        }
+
+
     }
     else
     {
@@ -899,7 +984,14 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
         AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, 256);
 
         // Send message
-        _send_to_core(core, message.message_string, 256);
+        if(_send_to_core(core, message.message_string, 256))
+        {
+            debug_output("Message could not be sent to Core!\n");
+        }
+        else
+        {
+            debug_output("Message sent to Core!\n");
+        }
     }
     else
     {

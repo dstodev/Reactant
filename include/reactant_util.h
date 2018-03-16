@@ -120,7 +120,7 @@ int ht_destruct(hash_table_t * hash_table);
 int ht_search(hash_table_t * hash_table, hash_data_t * hash_data, void * key);
 int ht_insert(hash_table_t * hash_table, void * key, void * value);
 int ht_remove(hash_table_t * hash_table, void * key);
-int ht_traverse(hash_table_t * hash_table, void (*visit)(void *, void *));
+int ht_traverse(hash_table_t * hash_table, void * (*visit)(void *, void *));
 
 
 /*******************************************************************************

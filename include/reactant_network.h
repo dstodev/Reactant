@@ -58,6 +58,13 @@ typedef struct _subpack_t
 
 } subpack_t;
 
+typedef struct _fds
+{
+    fd_set set;
+    int max_fd;
+
+} fds;
+
 unsigned long get_interface();
 int start_discovery_server(int port);
 int discover_server(int port);
