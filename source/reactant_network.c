@@ -453,6 +453,7 @@ int start_core_server(int port)
     }
 
     FD_ZERO(&active_fds);
+    FD_SET(sock, &active_fds);
     max_fd = sock;
 
     debug_output("\nCore initialized, awaiting connections...\n");
