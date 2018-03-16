@@ -479,9 +479,9 @@ int start_core_server(int port)
 
         // Wait for incoming connections
         read_fds = active_fds;
-        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0)
+        if ((rval = select(max_fd + 1, &read_fds, NULL, NULL, NULL)) < 0)
         {
-            debug_output("Failed to select incoming IO!\n");
+            debug_output("Failed to select incoming IO!: [%d]\n", rval);
             continue;
         }
 
