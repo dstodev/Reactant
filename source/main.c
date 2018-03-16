@@ -60,6 +60,8 @@ void node_test()
         //subscribe(&core, "chat1", &_node_callback);
         publish(&core, "chat1", "this is a test");
 
+        usleep(100000);
+
         stop_node_client(&core);
     }
 }

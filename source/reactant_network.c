@@ -482,9 +482,14 @@ int start_core_server(int port)
                         debug_output("Failed to accept incoming connection!\n");
                         continue;
                     }
+                    else
+                    {
+                        debug_output("Acquired new connection!\n");
+                    }
                 }
                 else
                 {
+                    debug_output("Acquired old connection!\n");
                     handle = s;
                 }
 
