@@ -10,7 +10,7 @@
 #include <curses.h>
 
 
-char reverse_byte(char byte);
+//char reverse_byte(char byte);
 
 //void core_test();
 //void node_test();
@@ -30,6 +30,7 @@ void humidity_callback(char * message);
 void light_callback(char * message);
 void pressure_callback(char * message);
 void temperature_callback(char * message);
+void generic_callback(char *message);
 
 typedef struct _gencfg_t
 {
@@ -109,7 +110,12 @@ void node_integration_test()
             subscribe(&core, "Pressure-1", &pressure_callback);
             subscribe(&core, "Temperature-1", &temperature_callback);
 
-            while(rval < 850)
+            subscribe(&core, "General-1", &generic_callback);
+            subscribe(&core, "General-2", &generic_callback);
+            subscribe(&core, "General-3", &generic_callback);
+            subscribe(&core, "General-4", &generic_callback);
+
+            while (rval < 900)
             {
                 fprintf(stderr, "\n");
 
@@ -134,6 +140,23 @@ void node_integration_test()
                 temperature = (225.0 * temperature) / 256.0 - 58.0;
                 snprintf(buffer, sizeof(buffer), "%d", (int) temperature);
                 publish(&core, "Temperature-1", buffer);
+
+                if (rval >= 100 && rval < 300)
+                {
+                    publish(&core, "General-1", "General-1 publish!");
+                }
+                else if (rval >= 300 && rval < 500)
+                {
+                    publish(&core, "General-2", "General-2 publish!");
+                }
+                else if (rval >= 500 && rval < 700)
+                {
+                    publish(&core, "General-3", "General-3 publish!");
+                }
+                else if (rval >= 700 && rval < 900)
+                {
+                    publish(&core, "General-4", "General-4 publish!");
+                }
 
                 bcm2835_delay(1000);
             }
@@ -169,7 +192,12 @@ void pressure_callback(char *message)
 
 void temperature_callback(char *message)
 {
-    fprintf(stderr, "Temperature reading: %s\n", message);
+    fprintf(stderr, "Temperature reading: %s F\n", message);
+}
+
+void generic_callback(char *message)
+{
+    fprintf(stderr, "Received relayed: %s\n", message);
 }
 
 /*void core_test()
@@ -210,7 +238,7 @@ void temperature_callback(char *message)
     }
 }*/
 
-char reverse_byte(char byte)
+/*char reverse_byte(char byte)
 {
     char rval = 0;
 
@@ -224,7 +252,7 @@ char reverse_byte(char byte)
     }
 
     return rval;
-}
+}*/
 
 /*void spi_test()
 {
