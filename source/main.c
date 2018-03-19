@@ -12,24 +12,46 @@
 
 char reverse_byte(char byte);
 
-void core_test();
-void node_test();
+//void core_test();
+//void node_test();
 
 void node_integration_test();
 
-void spi_test();
-void i2c_test();
-void ui_test();
-void queue_test();
-void message_test();
+//void spi_test();
+//void i2c_test();
+//void ui_test();
+//void queue_test();
+//void message_test();
 
-int configure_callback(WINDOW * PH(window));
-int test_callback(WINDOW * window);
+//int configure_callback(WINDOW * PH(window));
+//int test_callback(WINDOW * window);
 
 void humidity_callback(char * message);
 void light_callback(char * message);
 void pressure_callback(char * message);
 void temperature_callback(char * message);
+
+typedef struct _gencfg_t
+{
+        char ip[16];
+
+} gencfg_t;
+
+static int _gencfg_handler(void *user, const char *section, const char *name, const char *value)
+{
+    gencfg_t * netcfg = (gencfg_t *) user;
+
+    #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(name, n) == 0)
+    if (MATCH("general", "core-ip"))
+    {
+        strcpy(netcfg->ip, value);
+    }
+    else
+    {
+        return 1;
+    }
+    return 0;
+}
 
 int main()
 {
@@ -57,6 +79,13 @@ void node_integration_test()
     float temperature = 0;
     char buffer[250];
     short ch0, ch1;
+    gencfg_t config;
+
+    if (ini_parse("cfg.ini", &_gencfg_handler, &config) < 0)
+    {
+        debug_output("Failed to load configuration settings!\n");
+        return;
+    }
 
     if(!peripheral_init())
     {
@@ -73,7 +102,7 @@ void node_integration_test()
         // Enable light sensor
         tsl2561_enable();
 
-        if (!start_node_client(&core, 0x741, "192.168.1.105", 10112)) // 192.168.1.105
+        if (!start_node_client(&core, 0x741, config.ip, 10112)) // 192.168.1.105
         {
             subscribe(&core, "Humidity-1", &humidity_callback);
             subscribe(&core, "Light-1", &light_callback);
@@ -143,17 +172,17 @@ void temperature_callback(char *message)
     fprintf(stderr, "Temperature reading: %s\n", message);
 }
 
-void core_test()
+/*void core_test()
 {
     start_core_server(10112);
-}
+}*/
 
-void _node_callback(char * message)
+/*void _node_callback(char * message)
 {
     fprintf(stderr, "Received relayed: %s\n", message);
-}
+}*/
 
-void node_test()
+/*void node_test()
 {
     core_t core;
 
@@ -179,7 +208,7 @@ void node_test()
 
         stop_node_client(&core);
     }
-}
+}*/
 
 char reverse_byte(char byte)
 {
@@ -197,7 +226,7 @@ char reverse_byte(char byte)
     return rval;
 }
 
-void spi_test()
+/*void spi_test()
 {
 #ifdef __arm__
     if(!peripheral_init())
@@ -224,9 +253,9 @@ void spi_test()
         fprintf(stderr, "%s\n", "spi_test() failed! Could not initialize peripherals!");
     }
 #endif
-}
+}*/
 
-void i2c_test()
+/*void i2c_test()
 {
 #ifdef __arm__
     char rval;
@@ -273,13 +302,13 @@ void i2c_test()
         fprintf(stderr, "%s\n", "i2c_test() failed! Could not initialize peripherals!");
     }
 #endif
-}
+}*/
 
-void ui_test()
+/*void ui_test()
 {
-    /*##############
-    # Run Reactant #
-    ##############*/
+    // ################
+    // # Run Reactant #
+    // ################
     curses_init();
 
     // Menu items
@@ -324,9 +353,9 @@ void ui_test()
 
     free_menu(menu);
     curses_term();
-}
+}*/
 
-void queue_test()
+/*void queue_test()
 {
     queue_t q;
 
@@ -377,9 +406,9 @@ void queue_test()
     }
 
     queue_destruct(&q);
-}
+}*/
 
-void message_test()
+/*void message_test()
 {
     message_t message1, message2;
     message_initialize(&message1);
@@ -396,9 +425,9 @@ void message_test()
     message_unpack(&message2);
 
     fprintf(stderr, "%x %x %s\n", message2.bytes_remaining, message2.source_id, message2.payload);
-}
+}*/
 
-int configure_callback(WINDOW * PH(window))
+/*int configure_callback(WINDOW * PH(window))
 {
     int rval = 0;
 
@@ -418,13 +447,13 @@ int configure_callback(WINDOW * PH(window))
     }
 
     return rval;
-}
+}*/
 
-int test_callback(WINDOW * window)
+/*int test_callback(WINDOW * window)
 {
     int y, x;
     getmaxyx(stdscr, y, x);
     mvwprintw(window, y / 2, x / 2 - 7, "This is a test!");
 
     return 0;
-}
+}*/

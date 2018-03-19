@@ -5,6 +5,22 @@ const int LISTEN_QUEUE = 16;
 const int TABLE_SIZE = 10;
 
 // Private helper functions
+static int _netcfg_handler(void *user, const char *section, const char *name, const char *value)
+{
+    netcfg_t * netcfg = (netcfg_t *) user;
+
+    #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(name, n) == 0)
+    if (MATCH("network", "key"))
+    {
+        strcpy(netcfg->key, value);
+    }
+    else
+    {
+        return 1;
+    }
+    return 0;
+}
+
 static int _send_to_core(core_t * core, char * message, int size)
 {
     int bytes;
@@ -120,8 +136,17 @@ static void * _subscription_listener(void * _pack)
     int bytes = 0;
     char found;
 
+    netcfg_t config;
+
+    if (ini_parse("cfg.ini", &_netcfg_handler, &config) < 0)
+    {
+        debug_output("Failed to load configuration settings!\n");
+        return NULL;
+    }
+
     struct AES_ctx context;
-    const char * key = "01234567012345670123456701234567";  // Test key (32 bytes)
+    //const char * key = "01234567012345670123456701234567";  // Test key (32 bytes)
+    const char * key = config.key;
     const char * iv = "0123456701234567";   // Test IV (16 bytes)
 
     // Wait for and handle incoming relayed messages
@@ -398,8 +423,17 @@ int start_core_server(int port)
     fd_set active_fds;
     fd_set read_fds;
 
+    netcfg_t config;
+
+    if (ini_parse("cfg.ini", &_netcfg_handler, &config) < 0)
+    {
+        debug_output("Failed to load configuration settings!\n");
+        return 1;
+    }
+
     struct AES_ctx context;
-    const char * key = "01234567012345670123456701234567";  // Test key (32 bytes)
+    //const char * key = "01234567012345670123456701234567";  // Test key (32 bytes)
+    const char * key = config.key;
     const char * iv = "0123456701234567";   // Test IV (16 bytes)
 
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -846,9 +880,17 @@ int stop_node_client(core_t * core)
 int publish(core_t * core, char * channel, char * payload)
 {
     message_t message;
+    netcfg_t config;
+
+    if (ini_parse("cfg.ini", &_netcfg_handler, &config) < 0)
+    {
+        debug_output("Failed to load configuration settings!\n");
+        return 1;
+    }
 
     struct AES_ctx context;
-    const char * key = "01234567012345670123456701234567";  // 32 bytes
+    //const char * key = "01234567012345670123456701234567";  // 32 bytes
+    const char * key = config.key;
     const char * iv = "0123456701234567";   // 16 bytes
 
     if (core && channel && payload)
@@ -933,9 +975,17 @@ int publish(core_t * core, char * channel, char * payload)
 int subscribe(core_t * core, char * channel, void (*callback)(char *))
 {
     message_t message;
+    netcfg_t config;
+
+    if (ini_parse("cfg.ini", &_netcfg_handler, &config) < 0)
+    {
+        debug_output("Failed to load configuration settings!\n");
+        return 1;
+    }
 
     struct AES_ctx context;
-    const char * key = "01234567012345670123456701234567";  // 32 bytes
+    //const char * key = "01234567012345670123456701234567";  // 32 bytes
+    const char * key = config.key;
     const char * iv = "0123456701234567";   // 16 bytes
 
     static char init = 0;

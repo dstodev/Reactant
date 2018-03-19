@@ -15,6 +15,7 @@
 #include <pthread.h>
 
 #include <exsrc_aes.h>
+#include <exsrc_ini.h>
 
 #include "reactant_util.h"
 
@@ -23,6 +24,12 @@
 
 extern const int LISTEN_QUEUE;
 extern const int TABLE_SIZE;
+
+typedef struct _netcfg_t
+{
+    char key[33];
+
+} netcfg_t;
 
 typedef struct _core_t
 {
