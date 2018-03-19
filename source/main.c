@@ -15,6 +15,8 @@ char reverse_byte(char byte);
 void core_test();
 void node_test();
 
+void node_integration_test();
+
 void spi_test();
 void i2c_test();
 void ui_test();
@@ -24,20 +26,121 @@ void message_test();
 int configure_callback(WINDOW * PH(window));
 int test_callback(WINDOW * window);
 
+void humidity_callback(char * message);
+void light_callback(char * message);
+void pressure_callback(char * message);
+void temperature_callback(char * message);
 
 int main()
 {
-    debug_control(ENABLE);
+    debug_control(DISABLE);
+
+    node_integration_test();
 
     //ui_test();
 
     //core_test();
-    node_test();
+    //node_test();
 
     //spi_test();
     //i2c_test();
 
     return 0;
+}
+
+void node_integration_test()
+{
+#ifdef __arm__
+
+    core_t core;
+    int rval = 0;
+    float temperature = 0;
+    char buffer[250];
+    short ch0, ch1;
+
+    if(!peripheral_init())
+    {
+        // Setup light sensor timing register (402ms integration time, 16x gain)
+        smbus_write_byte(TSL2561_TIMING, TSL2561_INTEGRATION_402 | TSL2561_GAIN_16);
+
+        // Ensure valid light sensor ID register
+        if ((rval = smbus_read_byte(TSL2561_ID)) != 0x50)
+        {
+            fprintf(stderr, "%s: 0x%x\n", "Returned invalid ID register read!", rval);
+        }
+        rval = 0;
+
+        // Enable light sensor
+        tsl2561_enable();
+
+        if (!start_node_client(&core, 0x741, "192.168.1.105", 10112)) // 192.168.1.105
+        {
+            subscribe(&core, "Humidity-1", &humidity_callback);
+            subscribe(&core, "Light-1", &light_callback);
+            subscribe(&core, "Pressure-1", &pressure_callback);
+            subscribe(&core, "Temperature-1", &temperature_callback);
+
+            while(rval < 850)
+            {
+                fprintf(stderr, "\n");
+
+                // Humidity
+                snprintf(buffer, sizeof(buffer), "%d", mcp3008_read_channel(2));
+                publish(&core, "Humidity-1", buffer);
+
+                // Light
+                usleep(0.403 * 1000000);
+                ch0 = smbus_read_word(TSL2561_WORD | TSL2561_DATA0LOW);
+                ch1 = smbus_read_word(TSL2561_WORD | TSL2561_DATA1LOW);
+                snprintf(buffer, sizeof(buffer), "Ch0 (broadband): %d \tCh1 (IR): %d", ch0, ch1);
+                publish(&core, "Light-1", buffer);
+
+                // Pressure
+                rval = mcp3008_read_channel(0);
+                snprintf(buffer, sizeof(buffer), "%d", rval);
+                publish(&core, "Pressure-1", buffer);
+
+                // Temperature
+                temperature = mcp3008_read_channel(1);
+                temperature = (225.0 * temperature) / 256.0 - 58.0;
+                snprintf(buffer, sizeof(buffer), "%d", (int) temperature);
+                publish(&core, "Temperature-1", buffer);
+
+                bcm2835_delay(1000);
+            }
+            stop_node_client(&core);
+        }
+        // Disable light sensor
+        tsl2561_disable();
+
+        peripheral_term();
+    }
+    else
+    {
+        debug_output("node_integration_test() failed! Could not initialize peripherals!\n");
+    }
+
+#endif
+}
+
+void humidity_callback(char *message)
+{
+    fprintf(stderr, "Humidity reading: %s\n", message);
+}
+
+void light_callback(char *message)
+{
+    fprintf(stderr, "Light reading: %s\n", message);
+}
+
+void pressure_callback(char *message)
+{
+    fprintf(stderr, "Pressure reading: %s\n", message);
+}
+
+void temperature_callback(char *message)
+{
+    fprintf(stderr, "Temperature reading: %s\n", message);
 }
 
 void core_test()
@@ -57,18 +160,22 @@ void node_test()
     if (!start_node_client(&core, 0x741, "192.168.1.105", 10112)) // 192.168.1.105
     {
         publish(&core, "chat1", "this is a test");
-        usleep(10000);
+
         subscribe(&core, "chat1", &_node_callback);
-        usleep(10000);
+        subscribe(&core, "chat3", &_node_callback);
+        subscribe(&core, "chat4", &_node_callback);
+
         publish(&core, "chat1", "this is a test");
-        usleep(10000);
+
 
         publish(&core, "chat2", "this is a test2");
-        usleep(10000);
+
         subscribe(&core, "chat2", &_node_callback);
-        usleep(10000);
+
         publish(&core, "chat2", "this is a test2");
-        usleep(10000);
+
+
+        while(1);
 
         stop_node_client(&core);
     }
