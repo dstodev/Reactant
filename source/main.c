@@ -15,6 +15,7 @@
 //void core_test();
 //void node_test();
 
+void core_integration_test();
 void node_integration_test();
 
 //void spi_test();
@@ -35,17 +36,22 @@ void generic_callback(char *message);
 typedef struct _gencfg_t
 {
         char ip[16];
+        short port;
 
 } gencfg_t;
 
 static int _gencfg_handler(void *user, const char *section, const char *name, const char *value)
 {
-    gencfg_t * netcfg = (gencfg_t *) user;
+    gencfg_t * gencfg = (gencfg_t *) user;
 
     #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(name, n) == 0)
     if (MATCH("general", "core-ip"))
     {
-        strcpy(netcfg->ip, value);
+        strcpy(gencfg->ip, value);
+    }
+    else if (MATCH("general", "port"))
+    {
+        gencfg->port = (short) atoi(value);
     }
     else
     {
@@ -58,6 +64,7 @@ int main()
 {
     debug_control(DISABLE);
 
+    //core_integration_test();
     node_integration_test();
 
     //ui_test();
@@ -69,6 +76,19 @@ int main()
     //i2c_test();
 
     return 0;
+}
+
+void core_integration_test()
+{
+    gencfg_t config;
+
+    if (ini_parse("cfg.ini", &_gencfg_handler, &config) < 0)
+    {
+        debug_output("Failed to load configuration settings!\n");
+        return;
+    }
+
+    start_core_server(config.port);
 }
 
 void node_integration_test()
@@ -103,7 +123,7 @@ void node_integration_test()
         // Enable light sensor
         tsl2561_enable();
 
-        if (!start_node_client(&core, 0x741, config.ip, 10112)) // 192.168.1.105
+        if (!start_node_client(&core, 0x741, config.ip, config.port)) // 192.168.1.105
         {
             subscribe(&core, "Humidity-1", &humidity_callback);
             subscribe(&core, "Light-1", &light_callback);
