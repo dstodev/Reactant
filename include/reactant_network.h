@@ -14,7 +14,6 @@
 #include <errno.h>
 #include <pthread.h>
 
-#include <exsrc_aes.h>
 #include <exsrc_ini.h>
 
 #include "reactant_util.h"
@@ -28,6 +27,7 @@ extern const int TABLE_SIZE;
 typedef struct _netcfg_t
 {
     char key[33];
+    char iv[17];
 
 } netcfg_t;
 

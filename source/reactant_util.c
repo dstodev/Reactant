@@ -685,9 +685,11 @@ int message_initialize(message_t * message)
  *  Function:   Pack message
  *  Description:    Generate the message_string field of the given message_t
  ******************************************************************************/
-int message_pack(message_t * message)
+int message_pack(message_t * message, char * key, char * iv)
 {
     int rval = SUCCESS;
+    struct AES_ctx context;
+    unsigned char * hash;
 
     if (message)
     {
@@ -697,22 +699,26 @@ int message_pack(message_t * message)
         // Convert bytes_remaining field (short, 2 bytes) to string
         for (int i = 0; i < 2; ++i)
         {
-            //bytes_remaining[i] |= CAPTURE_BYTE(message->bytes_remaining, sizeof(bytes_remaining) - 2 - i);
             message->message_string[i] = CAPTURE_BYTE(message->bytes_remaining, 1 - i);
         }
 
         // Convert source_id field (int, 4 bytes) to string
         for (int i = 0; i < 4; ++i)
         {
-            //source_id[i] |= CAPTURE_BYTE(message->source_id, sizeof(source_id) - 2 - i);
             message->message_string[i + 2] = CAPTURE_BYTE(message->source_id, 3 - i);
         }
 
         // Append payload to message string
-        strcat(message->message_string + 6, message->payload);
+        strncat(message->message_string + 6, message->payload, sizeof(message->payload));
 
-        // Append hash to message string
-        strcat(message->message_string + 256, message->hmac);
+        // Hash and append to message (SHA256)
+        hash = message_hash(message->message_string);
+        strncpy(message->hmac, (char *) hash, SHA256_DIGEST_LENGTH);
+        strncat(message->message_string + 256, message->hmac, sizeof(message->hmac));
+
+        // Encrypt message (AES256)
+        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+        AES_CBC_encrypt_buffer(&context, (uint8_t *) message->message_string, sizeof(message->message_string));
     }
     else
     {
@@ -726,9 +732,10 @@ int message_pack(message_t * message)
  *  Function:   Unpack message
  *  Description:    Generate the message fields of the given message_t
  ******************************************************************************/
-int message_unpack(message_t * message)
+int message_unpack(message_t * message, char * key, char * iv)
 {
     int rval = SUCCESS;
+    struct AES_ctx context;
 
     if (message)
     {
@@ -737,6 +744,10 @@ int message_unpack(message_t * message)
         message->source_id = 0;
         memset(message->payload, 0, sizeof(message->payload));
         memset(message->hmac, 0, sizeof(message->hmac));
+
+        // Decrypt message (AES256)
+        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+        AES_CBC_decrypt_buffer(&context, (uint8_t *) message->message_string, sizeof(message->message_string));
 
         // Get bytes_remaining field
         for (int i = 0; i < 2; ++i)
@@ -759,7 +770,7 @@ int message_unpack(message_t * message)
         // Get hash
         for (int i = 256; i < 288; ++i)
         {
-            message->hmac[i - 256] = message->message_string[i];
+            message->hmac[i - 256] = (unsigned char) message->message_string[i];
         }
     }
     else
@@ -795,4 +806,16 @@ int message_debug_hex(char * message)
     }
 
     return 0;
+}
+
+unsigned char * message_hash(char * message)
+{
+    unsigned char * hash = malloc(SHA256_DIGEST_LENGTH);
+    SHA256_CTX sha_ctx;
+
+    SHA256_Init(&sha_ctx);
+    SHA256_Update(&sha_ctx, message, strlen(message));
+    SHA256_Final(hash, &sha_ctx);
+
+    return hash;
 }

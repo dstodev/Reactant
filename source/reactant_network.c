@@ -14,6 +14,10 @@ static int _netcfg_handler(void *user, const char *section, const char *name, co
     {
         strcpy(netcfg->key, value);
     }
+    if (MATCH("network", "iv"))
+    {
+        strcpy(netcfg->iv, value);
+    }
     else
     {
         return 1;
@@ -135,10 +139,9 @@ static void * _subscription_listener(void * _pack)
         return NULL;
     }
 
-    struct AES_ctx context;
     //const char * key = "01234567012345670123456701234567";  // Test key (32 bytes)
     const char * key = config.key;
-    const char * iv = "0123456701234567";   // Test IV (16 bytes)
+    const char * iv = config.iv;
 
     // Wait for and handle incoming relayed messages
     while (1)
@@ -156,14 +159,10 @@ static void * _subscription_listener(void * _pack)
         }                                                                               //
                                                                                         //
         message_initialize(&message);                                                   //
-        memcpy(message.message_string, buffer, MESSAGE_LENGTH);                                    //
-                                                                                        //
-        // Decrypt message (AES256)                                                     //
-        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);         //
-        AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);      //
+        memcpy(message.message_string, buffer, MESSAGE_LENGTH);                         //
                                                                                         //
         // Generate message struct from message                                         //
-        message_unpack(&message);                                                       //
+        message_unpack(&message, key, iv);                                              //
                                                                                         //
         strcpy(channel, message.payload);                                               //
         //////////////////////////////////////////////////////////////////////////////////
@@ -176,14 +175,10 @@ static void * _subscription_listener(void * _pack)
         }                                                                               //
                                                                                         //
         message_initialize(&message);                                                   //
-        memcpy(message.message_string, buffer, MESSAGE_LENGTH);                                    //
-                                                                                        //
-        // Decrypt message (AES256)                                                     //
-        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);         //
-        AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);      //
+        memcpy(message.message_string, buffer, MESSAGE_LENGTH);                         //
                                                                                         //
         // Generate message struct from message                                         //
-        message_unpack(&message);                                                       //
+        message_unpack(&message, key, iv);                                              //
         //////////////////////////////////////////////////////////////////////////////////
 
         pthread_mutex_lock(pack->lock);
@@ -358,46 +353,6 @@ int discover_server(int port)
     return 0;
 }
 
-/*static void * _aggregate_fds(void * key, void * value)
-{
-    static fds rval;
-    static char clean = 1;
-
-    channel_t * channel = (channel_t *) value;
-    int fd;
-
-    if (clean)
-    {
-        rval.max_fd = 0;
-        FD_ZERO(&rval.set);
-        clean = 0;
-    }
-
-    if (key && value) // Both parameters set
-    {
-        for (int i = 0; i < channel->size; ++i)
-        {
-            fd = channel->nodes[i].sock;
-
-            FD_SET(fd, &rval.set);
-            if (fd > rval.max_fd)
-            {
-                rval.max_fd = fd;
-            }
-        }
-
-        return NULL;
-    }
-    else if (!key && !value) // Both parameters NULL
-    {
-        clean = 1;
-
-        return &rval;
-    }
-
-    return NULL;
-}*/
-
 int start_core_server(int port)
 {
     int rval;
@@ -422,10 +377,8 @@ int start_core_server(int port)
         return 1;
     }
 
-    struct AES_ctx context;
-    //const char * key = "01234567012345670123456701234567";  // Test key (32 bytes)
     const char * key = config.key;
-    const char * iv = "0123456701234567";   // Test IV (16 bytes)
+    const char * iv = config.iv;
 
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     int handle = 0;
@@ -488,19 +441,6 @@ int start_core_server(int port)
 
         debug_output("\n");
 
-        // Acquire all file descriptors of currently subscribed devices
-        /*_aggregate_fds(NULL, NULL);
-        ht_traverse(&table, &_aggregate_fds);
-        fd_list = _aggregate_fds(NULL, NULL);
-
-        FD_SET(sock, &fd_list->set);
-        if (sock > fd_list->max_fd)
-        {
-            fd_list->max_fd = sock;
-        }*/
-
-        //if (select(fd_list->max_fd + 1, &fd_list->set, NULL, NULL, NULL) < 0)
-
         // Wait for incoming connections
         read_fds = active_fds;
         if ((rval = select(max_fd + 1, &read_fds, NULL, NULL, NULL)) < 0)
@@ -561,12 +501,8 @@ int start_core_server(int port)
                 message_initialize(&message);
                 memcpy(message.message_string, buffer, MESSAGE_LENGTH);
 
-                // Decrypt message (AES256)
-                AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-                AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);
-
                 // Generate message struct from message
-                message_unpack(&message);
+                message_unpack(&message, key, iv);
 
                 strcpy(desbuf, buffer);
                 strcpy(channel, message.payload);
@@ -591,12 +527,8 @@ int start_core_server(int port)
                     message_initialize(&message);
                     memcpy(message.message_string, buffer, MESSAGE_LENGTH);
 
-                    // Decrypt message (AES256)
-                    AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-                    AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);
-
                     // Generate message struct from message
-                    message_unpack(&message);
+                    message_unpack(&message, key, iv);
 
                     debug_output("Publishing message [%s] to channel [%s]!\n", message.payload, channel);
 
@@ -879,10 +811,8 @@ int publish(core_t * core, char * channel, char * payload)
         return 1;
     }
 
-    struct AES_ctx context;
-    //const char * key = "01234567012345670123456701234567";  // 32 bytes
     const char * key = config.key;
-    const char * iv = "0123456701234567";   // 16 bytes
+    const char * iv = config.iv;
 
     if (core && channel && payload)
     {
@@ -910,15 +840,17 @@ int publish(core_t * core, char * channel, char * payload)
         strcpy(message.payload, channel);   // Payload
 
         // Serialize message
-        message_pack(&message);
-        //fprintf(stderr, "%x %x %s\n", message.bytes_remaining, message.source_id, message.payload);
-
-        // Encrypt message (AES256)
-        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-        AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);
+        message_pack(&message, key, iv);
 
         // Send message
-        _send_to_core(core, message.message_string, MESSAGE_LENGTH);
+        if (_send_to_core(core, message.message_string, MESSAGE_LENGTH))
+        {
+            debug_output("Channel designation could not be sent to Core!\n");
+        }
+        else
+        {
+            debug_output("Channel designation sent to Core!\n");
+        }
 
         /*
          * Send payload message
@@ -931,16 +863,7 @@ int publish(core_t * core, char * channel, char * payload)
         strcpy(message.payload, payload);
 
         // Serialize message
-        message_pack(&message);
-
-        //message_debug_hex(message.message_string);
-
-        // Encrypt message (AES256)
-        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-        AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);
-
-        //fprintf(stderr, "\n");
-        //message_debug_hex(message.message_string);
+        message_pack(&message, key, iv);
 
         // Send message
         if (_send_to_core(core, message.message_string, MESSAGE_LENGTH))
@@ -974,10 +897,8 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
         return 1;
     }
 
-    struct AES_ctx context;
-    //const char * key = "01234567012345670123456701234567";  // 32 bytes
     const char * key = config.key;
-    const char * iv = "0123456701234567";   // 16 bytes
+    const char * iv = config.iv;
 
     static char init = 0;
     static subpack_t pack;
@@ -1040,12 +961,8 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
         strcpy(message.payload, channel);   // Payload
 
         // Serialize message
-        message_pack(&message);
+        message_pack(&message, key, iv);
         //fprintf(stderr, "%x %x %s\n", message.bytes_remaining, message.source_id, message.payload);
-
-        // Encrypt message (AES256)
-        AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-        AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);
 
         // Send message
         if(_send_to_core(core, message.message_string, MESSAGE_LENGTH))
