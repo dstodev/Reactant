@@ -122,7 +122,7 @@ static void * _subscription_listener(void * _pack)
     subpack_t * pack = (subpack_t *) _pack;
 
     message_t message;
-    char buffer[256];
+    char buffer[MESSAGE_LENGTH];
     char channel[250];
     int bytes = 0;
     char found;
@@ -156,11 +156,11 @@ static void * _subscription_listener(void * _pack)
         }                                                                               //
                                                                                         //
         message_initialize(&message);                                                   //
-        memcpy(message.message_string, buffer, 256);                                    //
+        memcpy(message.message_string, buffer, MESSAGE_LENGTH);                                    //
                                                                                         //
         // Decrypt message (AES256)                                                     //
         AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);         //
-        AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);      //
+        AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);      //
                                                                                         //
         // Generate message struct from message                                         //
         message_unpack(&message);                                                       //
@@ -176,11 +176,11 @@ static void * _subscription_listener(void * _pack)
         }                                                                               //
                                                                                         //
         message_initialize(&message);                                                   //
-        memcpy(message.message_string, buffer, 256);                                    //
+        memcpy(message.message_string, buffer, MESSAGE_LENGTH);                                    //
                                                                                         //
         // Decrypt message (AES256)                                                     //
         AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);         //
-        AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);      //
+        AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);      //
                                                                                         //
         // Generate message struct from message                                         //
         message_unpack(&message);                                                       //
@@ -431,8 +431,8 @@ int start_core_server(int port)
     int handle = 0;
     int client_size = sizeof(struct sockaddr);
 
-    char buffer[256];
-    char desbuf[256];
+    char buffer[MESSAGE_LENGTH];
+    char desbuf[MESSAGE_LENGTH];
     int bytes = 0;
 
     char channel[250];
@@ -559,11 +559,11 @@ int start_core_server(int port)
                 }
 
                 message_initialize(&message);
-                memcpy(message.message_string, buffer, 256);
+                memcpy(message.message_string, buffer, MESSAGE_LENGTH);
 
                 // Decrypt message (AES256)
                 AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-                AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+                AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);
 
                 // Generate message struct from message
                 message_unpack(&message);
@@ -589,11 +589,11 @@ int start_core_server(int port)
                     }
 
                     message_initialize(&message);
-                    memcpy(message.message_string, buffer, 256);
+                    memcpy(message.message_string, buffer, MESSAGE_LENGTH);
 
                     // Decrypt message (AES256)
                     AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-                    AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+                    AES_CBC_decrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);
 
                     // Generate message struct from message
                     message_unpack(&message);
@@ -616,8 +616,8 @@ int start_core_server(int port)
 
                         for (int i = 0; i < channel_target->size && !found; ++i)
                         {
-                            if (_send_to_node(&(channel_target->nodes[i]), desbuf, 256)
-                            ||  _send_to_node(&(channel_target->nodes[i]), buffer, 256))
+                            if (_send_to_node(&(channel_target->nodes[i]), desbuf, MESSAGE_LENGTH)
+                            ||  _send_to_node(&(channel_target->nodes[i]), buffer, MESSAGE_LENGTH))
                             // Message failed to send
                             {
                                 debug_output("Failed to relay message from channel [%s] to device [%x]!\n", channel, channel_target->nodes[i].node_id);
@@ -915,10 +915,10 @@ int publish(core_t * core, char * channel, char * payload)
 
         // Encrypt message (AES256)
         AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-        AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+        AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);
 
         // Send message
-        _send_to_core(core, message.message_string, 256);
+        _send_to_core(core, message.message_string, MESSAGE_LENGTH);
 
         /*
          * Send payload message
@@ -937,13 +937,13 @@ int publish(core_t * core, char * channel, char * payload)
 
         // Encrypt message (AES256)
         AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-        AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+        AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);
 
         //fprintf(stderr, "\n");
         //message_debug_hex(message.message_string);
 
         // Send message
-        if (_send_to_core(core, message.message_string, 256))
+        if (_send_to_core(core, message.message_string, MESSAGE_LENGTH))
         {
             debug_output("Message could not be sent to Core!\n");
         }
@@ -1045,10 +1045,10 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
 
         // Encrypt message (AES256)
         AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
-        AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, 256);
+        AES_CBC_encrypt_buffer(&context, (uint8_t *) message.message_string, MESSAGE_LENGTH);
 
         // Send message
-        if(_send_to_core(core, message.message_string, 256))
+        if(_send_to_core(core, message.message_string, MESSAGE_LENGTH))
         {
             debug_output("Message could not be sent to Core!\n");
         }

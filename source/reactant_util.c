@@ -670,6 +670,7 @@ int message_initialize(message_t * message)
         message->bytes_remaining = 0;
         message->source_id = 0;
         memset(message->payload, 0, sizeof(message->payload));
+        memset(message->hmac, 0, sizeof(message->hmac));
         memset(message->message_string, 0, sizeof(message->message_string));
     }
     else
@@ -709,6 +710,9 @@ int message_pack(message_t * message)
 
         // Append payload to message string
         strcat(message->message_string + 6, message->payload);
+
+        // Append hash to message string
+        strcat(message->message_string + 256, message->hmac);
     }
     else
     {
@@ -732,6 +736,7 @@ int message_unpack(message_t * message)
         message->bytes_remaining = 0;
         message->source_id = 0;
         memset(message->payload, 0, sizeof(message->payload));
+        memset(message->hmac, 0, sizeof(message->hmac));
 
         // Get bytes_remaining field
         for (int i = 0; i < 2; ++i)
@@ -749,6 +754,12 @@ int message_unpack(message_t * message)
         for (int i = 6; i < 256; ++i)
         {
             message->payload[i - 6] = message->message_string[i];
+        }
+
+        // Get hash
+        for (int i = 256; i < 288; ++i)
+        {
+            message->hmac[i - 256] = message->message_string[i];
         }
     }
     else

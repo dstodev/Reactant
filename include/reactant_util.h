@@ -177,7 +177,7 @@ int dequeue_blocking(queue_t * queue, void ** item);
  *                  protocol.
  ******************************************************************************/
 // Constant definitions
-#define MESSAGE_LENGTH (256)
+#define MESSAGE_LENGTH (288)
 
 // Macro definitions
 #define CAPTURE_BYTE(i, n) (((i) & (0xFF << (8 * (n)))) >> (8 * (n)))
@@ -188,8 +188,9 @@ typedef struct _message_t
     short bytes_remaining;  // 2 bytes
     unsigned int source_id; // 4 bytes
     char payload[250];      // 250 bytes (where the last byte must always be zero)
+    char hmac[32];
 
-    char message_string[256];   // Full message, built from components
+    char message_string[288];   // Full message, built from components
 
 } message_t;
 
