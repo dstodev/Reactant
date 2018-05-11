@@ -54,7 +54,7 @@ static int _gencfg_handler(void *user, const char *section, const char *name, co
 
 int main()
 {
-    debug_control(DISABLE);
+    debug_control(ENABLE);
 
     //core_integration_test();
     node_integration_test();
@@ -95,7 +95,7 @@ void node_integration_test()
 
         // Ensure valid light sensor ID register
         if ((rval = smbus_read_byte(TSL2561_ID)) != 0x50) {
-            fprintf(stderr, "%s: 0x%x\n", "Returned invalid ID register read!", rval);
+            fprintf(stderr, "Returned invalid ID register read!: 0x%x\n", rval);
         }
         rval = 0;
 

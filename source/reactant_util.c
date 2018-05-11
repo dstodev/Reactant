@@ -784,11 +784,11 @@ int message_unpack(message_t * message, const char * key, const char * iv)
         if (strncmp((char *) message->hmac, (char *) message_hash(message->message_string), SHA256_DIGEST_LENGTH) == 0)
         {
             debug_output("Hash confirmed, message authenticated!\n");
-            rval = MESSAGE_NO_AUTH;
         }
         else
         {
             debug_output("Hash not confirmed, message authentication failed!\n");
+            rval = MESSAGE_NO_AUTH;
         }
     }
     else

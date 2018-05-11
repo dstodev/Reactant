@@ -511,10 +511,9 @@ int start_core_server(int port)
                 // Generate message struct from message
                 if (message_unpack(&message, key, iv) == MESSAGE_NO_AUTH)
                 {
-                    debug_output("Message authentication failed!");
+                    debug_output("Message authentication failed!\n");
                     continue;
                 }
-
 
                 strcpy(desbuf, buffer);
                 strcpy(channel, message.payload);
