@@ -54,7 +54,7 @@ static int _gencfg_handler(void *user, const char *section, const char *name, co
 
 int main()
 {
-    debug_control(ENABLE);
+    debug_control(DISABLE);
 
     //core_integration_test();
     node_integration_test();

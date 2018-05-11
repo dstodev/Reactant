@@ -515,8 +515,8 @@ int start_core_server(int port)
                     continue;
                 }
 
-                strcpy(desbuf, buffer);
-                strcpy(channel, message.payload);
+                memcpy(desbuf, buffer, sizeof(desbuf));
+                memcpy(channel, message.payload, sizeof(channel));
 
                 switch (message.source_id)
                 {

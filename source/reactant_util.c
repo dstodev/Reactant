@@ -751,6 +751,7 @@ int message_unpack(message_t * message, const char * key, const char * iv)
         message->source_id = 0;
         memset(message->payload, 0, sizeof(message->payload));
         memset(message->hmac, 0, sizeof(message->hmac));
+        memset(chkbuf, 0, sizeof(chkbuf));
 
         // Decrypt message (AES256)
         AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
@@ -788,6 +789,7 @@ int message_unpack(message_t * message, const char * key, const char * iv)
         }
         else
         {
+            message_debug_hex(chkbuf);
             debug_output("Hash not confirmed, message authentication failed!\n");
             rval = MESSAGE_NO_AUTH;
         }
