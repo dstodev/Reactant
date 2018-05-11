@@ -161,7 +161,11 @@ static void * _subscription_listener(void * _pack)
         memcpy(message.message_string, buffer, MESSAGE_LENGTH);                         //
                                                                                         //
         // Generate message struct from message                                         //
-        message_unpack(&message, key, iv);                                              //
+        if (message_unpack(&message, key, iv) == MESSAGE_NO_AUTH)
+        {
+            debug_output("Message authentication failed!");
+            continue;
+        }
                                                                                         //
         strcpy(channel, message.payload);                                               //
         //////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +181,11 @@ static void * _subscription_listener(void * _pack)
         memcpy(message.message_string, buffer, MESSAGE_LENGTH);                         //
                                                                                         //
         // Generate message struct from message                                         //
-        message_unpack(&message, key, iv);                                              //
+        if (message_unpack(&message, key, iv) == MESSAGE_NO_AUTH)
+        {
+            debug_output("Message authentication failed!");
+            continue;
+        }
         //////////////////////////////////////////////////////////////////////////////////
 
         pthread_mutex_lock(pack->lock);
@@ -501,7 +509,12 @@ int start_core_server(int port)
                 memcpy(message.message_string, buffer, MESSAGE_LENGTH);
 
                 // Generate message struct from message
-                message_unpack(&message, key, iv);
+                if (message_unpack(&message, key, iv) == MESSAGE_NO_AUTH)
+                {
+                    debug_output("Message authentication failed!");
+                    continue;
+                }
+
 
                 strcpy(desbuf, buffer);
                 strcpy(channel, message.payload);
@@ -527,7 +540,11 @@ int start_core_server(int port)
                     memcpy(message.message_string, buffer, MESSAGE_LENGTH);
 
                     // Generate message struct from message
-                    message_unpack(&message, key, iv);
+                    if (message_unpack(&message, key, iv) == MESSAGE_NO_AUTH)
+                    {
+                        debug_output("Message authentication failed!");
+                        continue;
+                    }
 
                     debug_output("Publishing message [%s] to channel [%s]!\n", message.payload, channel);
 

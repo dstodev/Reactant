@@ -198,6 +198,16 @@ typedef struct _message_t
 
 } message_t;
 
+ // Message status
+extern char * _message_status_message[];
+#define message_check(function) error_check(function, _message_status_message)
+
+typedef enum _message_status_t
+{
+    MESSAGE_NO_AUTH = _EI, // Message hash does not match
+
+} message_status_t;
+
 // Message functions
 int message_initialize(message_t * message);
 int message_pack(message_t * message, const char * key, const char * iv);

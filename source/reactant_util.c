@@ -654,6 +654,12 @@ int dequeue_blocking(queue_t * queue, void ** item)
 // #    Message protocol                                                       #
 // #                                                                           #
 // #############################################################################
+char * _message_status_message[] =
+{
+    "Authentication failed; hash value mismatch",
+
+};
+
 /*******************************************************************************
  *  Function:   Create message
  *  Description:    Initializes the given message object
@@ -778,6 +784,7 @@ int message_unpack(message_t * message, const char * key, const char * iv)
         if (strncmp((char *) message->hmac, (char *) message_hash(message->message_string), SHA256_DIGEST_LENGTH) == 0)
         {
             debug_output("Hash confirmed, message authenticated!\n");
+            rval = MESSAGE_NO_AUTH;
         }
         else
         {
