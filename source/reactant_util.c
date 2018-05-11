@@ -685,7 +685,7 @@ int message_initialize(message_t * message)
  *  Function:   Pack message
  *  Description:    Generate the message_string field of the given message_t
  ******************************************************************************/
-int message_pack(message_t * message, char * key, char * iv)
+int message_pack(message_t * message, const char * key, const char * iv)
 {
     int rval = SUCCESS;
     struct AES_ctx context;
@@ -732,7 +732,7 @@ int message_pack(message_t * message, char * key, char * iv)
  *  Function:   Unpack message
  *  Description:    Generate the message fields of the given message_t
  ******************************************************************************/
-int message_unpack(message_t * message, char * key, char * iv)
+int message_unpack(message_t * message, const char * key, const char * iv)
 {
     int rval = SUCCESS;
     struct AES_ctx context;
@@ -771,6 +771,17 @@ int message_unpack(message_t * message, char * key, char * iv)
         for (int i = 256; i < 288; ++i)
         {
             message->hmac[i - 256] = (unsigned char) message->message_string[i];
+            message->message_string[i] = 0;
+        }
+
+        // Check hash
+        if (strncmp((char *) message->hmac, (char *) message_hash(message->message_string), SHA256_DIGEST_LENGTH) == 0)
+        {
+            debug_output("Hash confirmed, message authenticated!\n");
+        }
+        else
+        {
+            debug_output("Hash not confirmed, message authentication failed!\n");
         }
     }
     else

@@ -200,8 +200,8 @@ typedef struct _message_t
 
 // Message functions
 int message_initialize(message_t * message);
-int message_pack(message_t * message, char * key, char * iv);
-int message_unpack(message_t * message, char * key, char * iv);
+int message_pack(message_t * message, const char * key, const char * iv);
+int message_unpack(message_t * message, const char * key, const char * iv);
 int message_debug_hex(char * message);
 unsigned char * message_hash(char * message);
 

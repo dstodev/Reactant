@@ -139,7 +139,6 @@ static void * _subscription_listener(void * _pack)
         return NULL;
     }
 
-    //const char * key = "01234567012345670123456701234567";  // Test key (32 bytes)
     const char * key = config.key;
     const char * iv = config.iv;
 
