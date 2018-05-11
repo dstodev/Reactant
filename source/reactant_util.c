@@ -742,6 +742,7 @@ int message_unpack(message_t * message, const char * key, const char * iv)
 {
     int rval = SUCCESS;
     struct AES_ctx context;
+    char chkbuf[256];
 
     if (message)
     {
@@ -777,11 +778,11 @@ int message_unpack(message_t * message, const char * key, const char * iv)
         for (int i = 256; i < 288; ++i)
         {
             message->hmac[i - 256] = (unsigned char) message->message_string[i];
-            message->message_string[i] = 0;
         }
 
         // Check hash
-        if (strncmp((char *) message->hmac, (char *) message_hash(message->message_string), SHA256_DIGEST_LENGTH) == 0)
+        strncpy(chkbuf, message->message_string, sizeof(chkbuf));
+        if (strncmp((char *) message->hmac, (char *) message_hash(chkbuf), SHA256_DIGEST_LENGTH) == 0)
         {
             debug_output("Hash confirmed, message authenticated!\n");
         }

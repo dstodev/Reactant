@@ -163,7 +163,7 @@ static void * _subscription_listener(void * _pack)
         // Generate message struct from message                                         //
         if (message_unpack(&message, key, iv) == MESSAGE_NO_AUTH)
         {
-            debug_output("Message authentication failed!");
+            debug_output("Message authentication failed!\n");
             continue;
         }
                                                                                         //
@@ -183,7 +183,7 @@ static void * _subscription_listener(void * _pack)
         // Generate message struct from message                                         //
         if (message_unpack(&message, key, iv) == MESSAGE_NO_AUTH)
         {
-            debug_output("Message authentication failed!");
+            debug_output("Message authentication failed!\n");
             continue;
         }
         //////////////////////////////////////////////////////////////////////////////////
