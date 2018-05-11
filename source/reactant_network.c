@@ -68,14 +68,10 @@ static int _send_to_node(node_t * node, char * message, int size)
 {
     int bytes;
 
-    if (node && message)
-    {
-        if (node->sock)
-        {
-            if ((bytes = write(node->sock, message, size)) != size)
-            {
-                switch (errno)
-                {
+    if (node && message) {
+        if (node->sock) {
+            if ((bytes = write(node->sock, message, size)) != size) {
+                switch (errno) {
                     case EPIPE:
                         // Connection to Node was lost
                         debug_output("Connection to Node [%x] has been lost!\n", node->node_id);
@@ -85,19 +81,14 @@ static int _send_to_node(node_t * node, char * message, int size)
                         // Unknown
                         debug_output("An unknown error occurred while attempting to write to Node [%x]!\n", node->node_id);
                 }
-
                 return 1;
             }
-        }
-        else
-        {
+        } else {
             // Connection to Node was never established
             debug_output("Connection to Node [%x] has not yet been established!\n", node->node_id);
             return 1;
         }
-    }
-    else
-    {
+    } else {
         // Invalid parameters
         debug_output("<_send_to_node> Invalid parameter(s)!\n");
         return 1;

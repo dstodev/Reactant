@@ -33,28 +33,20 @@ void pressure_callback(char * message);
 void temperature_callback(char * message);
 void generic_callback(char *message);
 
-typedef struct _gencfg_t
-{
+typedef struct _gencfg_t {
         char ip[16];
         short port;
-
 } gencfg_t;
 
-static int _gencfg_handler(void *user, const char *section, const char *name, const char *value)
-{
+static int _gencfg_handler(void *user, const char *section, const char *name, const char *value) {
     gencfg_t * gencfg = (gencfg_t *) user;
 
     #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(name, n) == 0)
-    if (MATCH("general", "core-ip"))
-    {
+    if (MATCH("general", "core-ip")) {
         strcpy(gencfg->ip, value);
-    }
-    else if (MATCH("general", "port"))
-    {
+    } else if (MATCH("general", "port")) {
         gencfg->port = (short) atoi(value);
-    }
-    else
-    {
+    } else {
         return 1;
     }
     return 0;
@@ -67,23 +59,13 @@ int main()
     //core_integration_test();
     node_integration_test();
 
-    //ui_test();
-
-    //core_test();
-    //node_test();
-
-    //spi_test();
-    //i2c_test();
-
     return 0;
 }
 
-void core_integration_test()
-{
+void core_integration_test() {
     gencfg_t config;
 
-    if (ini_parse("cfg.ini", &_gencfg_handler, &config) < 0)
-    {
+    if (ini_parse("cfg.ini", &_gencfg_handler, &config) < 0) {
         debug_output("Failed to load configuration settings!\n");
         return;
     }
@@ -102,20 +84,17 @@ void node_integration_test()
     short ch0, ch1;
     gencfg_t config;
 
-    if (ini_parse("cfg.ini", &_gencfg_handler, &config) < 0)
-    {
+    if (ini_parse("cfg.ini", &_gencfg_handler, &config) < 0) {
         debug_output("Failed to load configuration settings!\n");
         return;
     }
 
-    if(!peripheral_init())
-    {
+    if(!peripheral_init()) {
         // Setup light sensor timing register (402ms integration time, 16x gain)
         smbus_write_byte(TSL2561_TIMING, TSL2561_INTEGRATION_402 | TSL2561_GAIN_16);
 
         // Ensure valid light sensor ID register
-        if ((rval = smbus_read_byte(TSL2561_ID)) != 0x50)
-        {
+        if ((rval = smbus_read_byte(TSL2561_ID)) != 0x50) {
             fprintf(stderr, "%s: 0x%x\n", "Returned invalid ID register read!", rval);
         }
         rval = 0;
@@ -123,8 +102,7 @@ void node_integration_test()
         // Enable light sensor
         tsl2561_enable();
 
-        if (!start_node_client(&core, 0x741, config.ip, config.port)) // 192.168.1.105
-        {
+        if (!start_node_client(&core, 0x741, config.ip, config.port)) { // 192.168.1.105
             subscribe(&core, "Humidity-1", &humidity_callback);
             subscribe(&core, "Light-1", &light_callback);
             subscribe(&core, "Pressure-1", &pressure_callback);
@@ -135,8 +113,7 @@ void node_integration_test()
             subscribe(&core, "General-3", &generic_callback);
             subscribe(&core, "General-4", &generic_callback);
 
-            while (rval < 900)
-            {
+            while (rval < 900) {
                 fprintf(stderr, "\n");
 
                 // Humidity
@@ -161,23 +138,15 @@ void node_integration_test()
                 snprintf(buffer, sizeof(buffer), "%d", (int) temperature);
                 publish(&core, "Temperature-1", buffer);
 
-                if (rval >= 100 && rval < 300)
-                {
+                if (rval >= 100 && rval < 300) {
                     publish(&core, "General-1", "General-1 publish!");
-                }
-                else if (rval >= 300 && rval < 500)
-                {
+                } else if (rval >= 300 && rval < 500) {
                     publish(&core, "General-2", "General-2 publish!");
-                }
-                else if (rval >= 500 && rval < 700)
-                {
+                } else if (rval >= 500 && rval < 700) {
                     publish(&core, "General-3", "General-3 publish!");
-                }
-                else if (rval >= 700 && rval < 900)
-                {
+                } else if (rval >= 700 && rval < 900) {
                     publish(&core, "General-4", "General-4 publish!");
                 }
-
                 bcm2835_delay(1000);
             }
             stop_node_client(&core);
@@ -186,37 +155,29 @@ void node_integration_test()
         tsl2561_disable();
 
         peripheral_term();
-    }
-    else
-    {
+    } else {
         debug_output("node_integration_test() failed! Could not initialize peripherals!\n");
     }
-
 #endif
 }
 
-void humidity_callback(char *message)
-{
+void humidity_callback(char *message) {
     fprintf(stderr, "Humidity reading: %s\n", message);
 }
 
-void light_callback(char *message)
-{
+void light_callback(char *message) {
     fprintf(stderr, "Light reading: %s\n", message);
 }
 
-void pressure_callback(char *message)
-{
+void pressure_callback(char *message) {
     fprintf(stderr, "Pressure reading: %s\n", message);
 }
 
-void temperature_callback(char *message)
-{
+void temperature_callback(char *message) {
     fprintf(stderr, "Temperature reading: %s F\n", message);
 }
 
-void generic_callback(char *message)
-{
+void generic_callback(char *message) {
     fprintf(stderr, "Received relayed: %s\n", message);
 }
 
