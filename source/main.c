@@ -36,6 +36,8 @@ void generic_callback(char *message);
 typedef struct _gencfg_t {
         char ip[16];
         short port;
+        char key[33];
+        char iv[17];
 } gencfg_t;
 
 static int _gencfg_handler(const mTCHAR *section, const mTCHAR *key, const mTCHAR *value, void *user) {
@@ -48,6 +50,10 @@ static int _gencfg_handler(const mTCHAR *section, const mTCHAR *key, const mTCHA
         strcpy(gencfg->ip, value);
     } else if (MATCH("general", "port")) {
         gencfg->port = (short) atoi(value);
+    } else if (MATCH("network", "key")) {
+        strcpy(gencfg->key, value);
+    } else if (MATCH("network", "iv")) {
+        strcpy(gencfg->iv, value);
     }
     return 1;
 }
@@ -68,7 +74,7 @@ void core_integration_test() {
         return;
     }
 
-    start_core_server(config.port);
+    start_core_server(config.port, config.key, config.iv);
 }
 
 void node_integration_test() {
@@ -86,8 +92,6 @@ void node_integration_test() {
         return;
     }
 
-    debug_output("%x\n", config.ip);
-
     if(!peripheral_init()) {
         // Setup light sensor timing register (402ms integration time, 16x gain)
         smbus_write_byte(TSL2561_TIMING, TSL2561_INTEGRATION_402 | TSL2561_GAIN_16);
@@ -101,7 +105,7 @@ void node_integration_test() {
         // Enable light sensor
         tsl2561_enable();
 
-        if (!start_node_client(&core, 0x741, config.ip, config.port)) { // 192.168.1.105
+        if (!start_node_client(&core, 0x741, config.ip, config.port, config.key, config.iv)) { // 192.168.1.105
             subscribe(&core, "Humidity-1", &humidity_callback);
             subscribe(&core, "Light-1", &light_callback);
             subscribe(&core, "Pressure-1", &pressure_callback);

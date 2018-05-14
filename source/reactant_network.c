@@ -4,19 +4,6 @@
 const int LISTEN_QUEUE = 16;
 const int TABLE_SIZE = 10;
 
-// Private helper functions
-static int _netcfg_handler(const mTCHAR *section, const mTCHAR *key, const mTCHAR *value, void *user) {
-    netcfg_t * netcfg = (netcfg_t *) user;
-
-    #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(key, n) == 0)
-    if (MATCH("network", "key")) {
-        strcpy(netcfg->key, value);
-    } if (MATCH("network", "iv")) {
-        strcpy(netcfg->iv, value);
-    }
-    return 1;
-}
-
 static int _send_to_core(core_t * core, char * message, int size) {
     int bytes;
 
@@ -95,7 +82,7 @@ static uint8_t _compare_channel(void * lhs, void * rhs) {
     return (strcmp((char *) lhs, (char *) rhs) == 0);
 }
 
-static void * _subscription_listener(void * _pack) {
+static void * _subscription_listener(void *_pack) {
     subpack_t * pack = (subpack_t *) _pack;
 
     message_t message;
@@ -104,16 +91,8 @@ static void * _subscription_listener(void * _pack) {
     int bytes = 0;
     char found;
 
-    netcfg_t config;
-
-    if (ini_browse(&_netcfg_handler, &config, "cfg.ini") < 0)
-    {
-        debug_output("Failed to load configuration settings!\n");
-        return NULL;
-    }
-
-    const char * key = config.key;
-    const char * iv = config.iv;
+    const char * key = pack->core->key;
+    const char * iv = pack->core->iv;
 
     // Wait for and handle incoming relayed messages
     while (1) {
@@ -295,7 +274,7 @@ int discover_server(int port) {
     return 0;
 }
 
-int start_core_server(int port) {
+int start_core_server(int port, char *key, char *iv) {
     int rval;
 
     hash_table_t table;
@@ -309,16 +288,6 @@ int start_core_server(int port) {
     int max_fd;
     fd_set active_fds;
     fd_set read_fds;
-
-    netcfg_t config;
-
-    if (ini_browse(&_netcfg_handler, &config, "cfg.ini") < 0) {
-        debug_output("Failed to load configuration settings!\n");
-        return 1;
-    }
-
-    const char * key = config.key;
-    const char * iv = config.iv;
 
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     int handle = 0;
@@ -600,7 +569,7 @@ int start_core_server(int port) {
     return 0;
 }
 
-int start_node_client(core_t * core, unsigned int id, char * ip, int port) {
+int start_node_client(core_t * core, unsigned int id, char * ip, int port, char * key, char * iv) {
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     struct sockaddr_in server_addr;
 
@@ -619,15 +588,17 @@ int start_node_client(core_t * core, unsigned int id, char * ip, int port) {
         // Connect to Core device
         if (connect(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
             // Connection failed
-            debug_output("Could not connect to server!\n");
+            debug_output("Could not connect to Core!\n");
             return 1;
         } else {
             // Connection succeeded
-            debug_output("Conected to server!\n");
+            debug_output("Conected to Core!\n");
             core->addr = calloc(1, sizeof(server_addr));
             *(core->addr) = server_addr;
             core->sock = sock;
             core->node_id = id;
+            strcpy(core->key, key);
+            strcpy(core->iv, iv);
         }
     }
     else {
@@ -666,16 +637,8 @@ int stop_node_client(core_t * core)
 int publish(core_t * core, char * channel, char * payload)
 {
     message_t message;
-    netcfg_t config;
-
-    if (ini_browse(&_netcfg_handler, &config, "cfg.ini") < 0)
-    {
-        debug_output("Failed to load configuration settings!\n");
-        return 1;
-    }
-
-    const char * key = config.key;
-    const char * iv = config.iv;
+    const char * key = core->key;
+    const char * iv = core->iv;
 
     if (core && channel && payload)
     {
@@ -752,16 +715,8 @@ int publish(core_t * core, char * channel, char * payload)
 int subscribe(core_t * core, char * channel, void (*callback)(char *))
 {
     message_t message;
-    netcfg_t config;
-
-    if (ini_browse(&_netcfg_handler, &config, "cfg.ini") < 0)
-    {
-        debug_output("Failed to load configuration settings!\n");
-        return 1;
-    }
-
-    const char * key = config.key;
-    const char * iv = config.iv;
+    const char * key = core->key;
+    const char * iv = core->iv;
 
     static char init = 0;
     static subpack_t pack;
