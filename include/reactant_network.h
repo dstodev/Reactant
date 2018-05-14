@@ -14,8 +14,7 @@
 #include <errno.h>
 #include <pthread.h>
 
-#include <exsrc_ini.h>
-
+#include "exsrc_minIni.h"
 #include "reactant_util.h"
 
 

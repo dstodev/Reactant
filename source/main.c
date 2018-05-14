@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <curses.h>
 
 #include "reactant_peripherals.h"
 #include "reactant_network.h"
 #include "reactant_util.h"
 #include "reactant_ui.h"
-
-#include <curses.h>
+#include "exsrc_minIni.h"
 
 
 //char reverse_byte(char byte);
@@ -38,10 +38,10 @@ typedef struct _gencfg_t {
         short port;
 } gencfg_t;
 
-static int _gencfg_handler(void *user, const char *section, const char *name, const char *value) {
-    gencfg_t * gencfg = (gencfg_t *) user;
+static int _gencfg_handler(const mTCHAR *section, const mTCHAR *key, const mTCHAR *value, void *user) {
+    gencfg_t *gencfg = (gencfg_t *)user;
 
-    #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(name, n) == 0)
+    #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(key, n) == 0)
     if (MATCH("general", "core-ip")) {
         strcpy(gencfg->ip, value);
     } else if (MATCH("general", "port")) {
@@ -52,8 +52,7 @@ static int _gencfg_handler(void *user, const char *section, const char *name, co
     return 0;
 }
 
-int main()
-{
+int main() {
     debug_control(DISABLE);
 
     //core_integration_test();
@@ -65,7 +64,7 @@ int main()
 void core_integration_test() {
     gencfg_t config;
 
-    if (ini_parse("cfg.ini", &_gencfg_handler, &config) < 0) {
+    if (ini_browse(&_gencfg_handler, &config, "cfg.ini") < 0) {
         debug_output("Failed to load configuration settings!\n");
         return;
     }
@@ -73,8 +72,7 @@ void core_integration_test() {
     start_core_server(config.port);
 }
 
-void node_integration_test()
-{
+void node_integration_test() {
 #ifdef __arm__
 
     core_t core;
@@ -84,7 +82,7 @@ void node_integration_test()
     short ch0, ch1;
     gencfg_t config;
 
-    if (ini_parse("cfg.ini", &_gencfg_handler, &config) < 0) {
+    if (ini_browse(&_gencfg_handler, &config, "cfg.ini") < 0) {
         debug_output("Failed to load configuration settings!\n");
         return;
     }
