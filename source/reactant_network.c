@@ -13,10 +13,8 @@ static int _netcfg_handler(const mTCHAR *section, const mTCHAR *key, const mTCHA
         strcpy(netcfg->key, value);
     } if (MATCH("network", "iv")) {
         strcpy(netcfg->iv, value);
-    } else {
-        return 1;
     }
-    return 0;
+    return 1;
 }
 
 static int _send_to_core(core_t * core, char * message, int size) {
@@ -602,13 +600,11 @@ int start_core_server(int port) {
     return 0;
 }
 
-int start_node_client(core_t * core, unsigned int id, char * ip, int port)
-{
+int start_node_client(core_t * core, unsigned int id, char * ip, int port) {
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     struct sockaddr_in server_addr;
 
-    if (core && ip)
-    {
+    if (core && ip) {
         // Ignore SIGPIPE signals
         signal(SIGPIPE, SIG_IGN);
 
@@ -621,27 +617,23 @@ int start_node_client(core_t * core, unsigned int id, char * ip, int port)
         memset(server_addr.sin_zero, 0, sizeof(server_addr.sin_zero));
 
         // Connect to Core device
-        if (connect(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
-        {
+        if (connect(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
             // Connection failed
             debug_output("Could not connect to server!\n");
             return 1;
-        }
-        else
-        {
+        } else {
             // Connection succeeded
+            debug_output("Conected to server!\n");
             core->addr = calloc(1, sizeof(server_addr));
             *(core->addr) = server_addr;
             core->sock = sock;
             core->node_id = id;
         }
     }
-    else
-    {
+    else {
         // Invalid parameters
         return 1;
     }
-
     return 0;
 }
 

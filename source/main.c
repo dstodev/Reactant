@@ -41,15 +41,15 @@ typedef struct _gencfg_t {
 static int _gencfg_handler(const mTCHAR *section, const mTCHAR *key, const mTCHAR *value, void *user) {
     gencfg_t *gencfg = (gencfg_t *)user;
 
-    #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(key, n) == 0)
+    debug_output("[%s] %s=%s\n", section, key, value);
+
+    #define MATCH(s, k) (strcmp(s, section) == 0 && strcmp(k, key) == 0)
     if (MATCH("general", "core-ip")) {
         strcpy(gencfg->ip, value);
     } else if (MATCH("general", "port")) {
         gencfg->port = (short) atoi(value);
-    } else {
-        return 1;
     }
-    return 0;
+    return 1;
 }
 
 int main() {
@@ -63,7 +63,6 @@ int main() {
 
 void core_integration_test() {
     gencfg_t config;
-
     if (ini_browse(&_gencfg_handler, &config, "cfg.ini") < 0) {
         debug_output("Failed to load configuration settings!\n");
         return;
@@ -80,12 +79,14 @@ void node_integration_test() {
     float temperature = 0;
     char buffer[250];
     short ch0, ch1;
-    gencfg_t config;
 
+    gencfg_t config;
     if (ini_browse(&_gencfg_handler, &config, "cfg.ini") < 0) {
         debug_output("Failed to load configuration settings!\n");
         return;
     }
+
+    debug_output("%x\n", config.ip);
 
     if(!peripheral_init()) {
         // Setup light sensor timing register (402ms integration time, 16x gain)
