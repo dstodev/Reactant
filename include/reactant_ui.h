@@ -70,6 +70,9 @@ int operate_menu(menu_t * menu);
 // Utility functions
 int get_panel_height(panel_t * panel);
 
+// Callbacks
+void prompt(WINDOW * window, char * label, char * var, int var_size);
+
 void curses_init();
 void curses_term();
 

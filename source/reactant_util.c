@@ -21,6 +21,25 @@ int digits(int i, int base)
     return (i ? (int) (log((double) (i < 0 ? -1 * i : i)) / log(base)) + 1 : 1);
 }
 
+/*******************************************************************************
+ *  Function:   Reverse Byte
+ *  Description:    Reverses the bits of the given byte
+ ******************************************************************************/
+char reverse_byte(unsigned char byte)
+{
+    char rval = 0;
+
+    for (int i = 0; i < 4; ++i)
+    {
+        rval |= ((byte & (1 << i)) << (8 - i * 2 - 1));
+    }
+    for (int i = 3; i >= 0; --i)
+    {
+        rval |= ((byte & (0x80 >> i)) >> (8 - i * 2 - 1));
+    }
+
+    return rval;
+}
 // #############################################################################
 // #                                                                           #
 // #    Error checking                                                         #

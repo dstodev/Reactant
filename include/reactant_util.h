@@ -43,6 +43,9 @@ typedef enum _control_t
 // Count digits in integer
 int digits(int i, int base);
 
+// Reverse the bits of a byte
+char reverse_byte(unsigned char byte);
+
 /*******************************************************************************
  *  Category:   Error checking
  *  Description:    Allows function return status to be easily inspected

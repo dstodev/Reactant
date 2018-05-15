@@ -263,7 +263,7 @@ int discover_server(int port) {
         return 1;
     }
     if (bind(sock, (struct sockaddr *) &client_addr, sizeof(client_addr)) < 0) {
-        debug_output("Could not bind to %d:%d!\n", ntohl(client_addr.sin_addr.s_addr), ntohs(port));
+        debug_output("Could not bind to %d:%d!\n", ntohl(client_addr.sin_addr.s_addr), ntohs(client_addr.sin_port));
         return 1;
     }
     while ((bytes = recvfrom(sock, message, BUFFER_DEPTH, 0, (struct sockaddr *) &server_address, &address_length)) > 0) {
@@ -320,7 +320,7 @@ int start_core_server(int port, char *key, char *iv) {
 
     // Bind server socket to the given port
     if (bind(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
-        debug_output("Could not bind to %d:%d!\n", ntohl(server_addr.sin_addr.s_addr), ntohs(port));
+        debug_output("Could not bind to %d:%d!\n", ntohl(server_addr.sin_addr.s_addr), ntohs(server_addr.sin_port));
         close(sock);
         return 1;
     }
