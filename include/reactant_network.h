@@ -18,7 +18,6 @@
 #include "reactant_util.h"
 
 
-#define S_MUL 1000000
 #define CONF_INI "cfg.ini"
 
 extern const int LISTEN_QUEUE;

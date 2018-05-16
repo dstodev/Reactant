@@ -42,7 +42,7 @@ void i2c_test() {
 
         do {
             // Wait 403 ms (because of the 402ms integration time)
-            usleep(0.403 * 1000000);
+            usleep(0.403 * S_MUL);
 
             // Read channel 0 (broadband)
             ch0 = smbus_read_word(TSL2561_WORD | TSL2561_DATA0LOW);

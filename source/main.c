@@ -125,7 +125,7 @@ void main_menu() {
     curses_init();
 
     // Menu items
-    panel_t * panels[2];
+    panel_t * panels[3];
 
     panels[0] = create_panel("Operation", 2, 3); // 2, 3
     add_panel_button(panels[0], create_button("Start Reactant Core", NULL));
@@ -137,12 +137,21 @@ void main_menu() {
     add_panel_button(panels[1], create_button("Test Reactant Core", _core_test_callback));
     add_panel_button(panels[1], create_button("Test Reactant Node", _node_test_callback));
 
+    panels[2] = create_panel("Tests", 7, 3);
+    add_panel_button(panels[2], create_button("SPI", NULL));
+    add_panel_button(panels[2], create_button("I2C", NULL));
+    add_panel_button(panels[2], create_button("Message", NULL));
+    add_panel_button(panels[2], create_button("AES256", NULL));
+    add_panel_button(panels[2], create_button("SHA256", NULL));
+    add_panel_button(panels[2], create_button("Channels", NULL));
+
     panels[0]->selected = 1;
     panels[0]->items[0]->selected = 1;
 
     menu_t * menu = create_menu("Reactant Primary Control");
-    add_menu_panel(menu, panels[0]);
-    add_menu_panel(menu, panels[1]);
+    for (int i = 0; i < sizeof(panels) / sizeof(panel_t*); ++i) {
+        add_menu_panel(menu, panels[i]);
+    }
 
     operate_menu(menu);
 
@@ -179,7 +188,7 @@ void node_integration_test() {
         return;
     }
 
-    if(!peripheral_init()) {
+    if (!peripheral_init()) {
         // Setup light sensor timing register (402ms integration time, 16x gain)
         smbus_write_byte(TSL2561_TIMING, TSL2561_INTEGRATION_402 | TSL2561_GAIN_16);
 
@@ -204,14 +213,14 @@ void node_integration_test() {
             subscribe(&core, "General-4", &generic_callback);
 
             while (rval < 900) {
-                fprintf(stderr, "\n");
+                debug_output("\n");
 
                 // Humidity
                 snprintf(buffer, sizeof(buffer), "%d", mcp3008_read_channel(2));
                 publish(&core, "Humidity-1", buffer);
 
                 // Light
-                usleep(0.403 * 1000000);
+                usleep(0.403 * S_MUL);
                 ch0 = smbus_read_word(TSL2561_WORD | TSL2561_DATA0LOW);
                 ch1 = smbus_read_word(TSL2561_WORD | TSL2561_DATA1LOW);
                 snprintf(buffer, sizeof(buffer), "Ch0 (broadband): %d \tCh1 (IR): %d", ch0, ch1);

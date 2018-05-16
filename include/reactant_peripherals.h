@@ -13,6 +13,9 @@
 #include <bcm2835.h>
 #endif
 
+#define S_MUL 1000000
+
+
 /*******************************************************************************
  *  Category:   General
  *  Description:    Defines elements used by other categories
