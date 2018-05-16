@@ -22,9 +22,9 @@ int test_humidity_cb(WINDOW *window);
 int test_light_cb(WINDOW *window);
 int test_pressure_cb(WINDOW *window);
 int test_temperature_cb(WINDOW *window);
-int test_message_cb(WINDOW *window);
 int test_aes_cb(WINDOW *window);
 int test_sha_cb(WINDOW *window);
+int test_message_cb(WINDOW *window);
 int test_channels_cb(WINDOW *window);
 
 int test_spi();
@@ -33,9 +33,9 @@ int test_humidity();
 int test_light();
 int test_pressure();
 int test_temperature();
-int test_message();
 int test_aes();
 int test_sha();
+int test_message();
 int test_channels();
 
 void spi_test();

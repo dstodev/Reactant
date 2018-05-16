@@ -739,6 +739,7 @@ int message_pack(message_t * message, const char * key, const char * iv)
         // Hash and append to message (SHA256)
         hash = message_hash(message->message_string);
         strncpy(message->hmac, (char *) hash, SHA256_DIGEST_LENGTH);
+        free(hash);
         strncat(message->message_string + 256, message->hmac, sizeof(message->hmac));
 
         // Encrypt message (AES256)

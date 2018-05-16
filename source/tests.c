@@ -27,6 +27,10 @@ int test_all(WINDOW *window) {
     print_result("Light", test_light(), getmaxx(window));
     print_result("Pressure", test_pressure(), getmaxx(window));
     print_result("Temperature", test_temperature(), getmaxx(window));
+    print_result("AES256", test_aes(), getmaxx(window));
+    print_result("SHA256", test_sha(), getmaxx(window));
+    print_result("Message", test_message(), getmaxx(window));
+    print_result("Channels", test_channels(), getmaxx(window));
 
 
     debug_output("Press ENTER to continue!");
@@ -177,24 +181,6 @@ int test_temperature() {
     return rval;
 }
 
-int test_message_cb(WINDOW *window) {
-    debug_control(ENABLE);
-    endwin();
-    system("clear");
-    print_result("Message", test_message(), getmaxx(window));
-    debug_output("Press ENTER to continue!");
-    while ((getchar() != '\n'));
-    return 0;
-}
-
-int test_message() {
-    int rval = 0;
-    debug_control(DISABLE);
-
-    debug_control(ENABLE);
-    return rval;
-}
-
 int test_aes_cb(WINDOW *window) {
     debug_control(ENABLE);
     endwin();
@@ -207,7 +193,30 @@ int test_aes_cb(WINDOW *window) {
 
 int test_aes() {
     int rval = 0;
+    struct AES_ctx context;
+    char buffer[64];
+    char * str = "This is a test!";
+    char * key = "12345678901234567890123456789012";
+    char * iv = "1234567890123456";
     debug_control(DISABLE);
+
+    strcpy(buffer, str);
+
+    // Encrypt message
+    AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+    AES_CBC_encrypt_buffer(&context, (uint8_t *) buffer, sizeof(buffer));
+
+    if (strcmp(buffer, str) == 0) {
+        rval = 1;
+    }
+
+    // Decrypt message
+    AES_init_ctx_iv(&context, (const uint8_t *) key, (const uint8_t *) iv);
+    AES_CBC_decrypt_buffer(&context, (uint8_t *) buffer, sizeof(buffer));
+
+    if (strcmp(buffer, str) != 0) {
+        rval = 1;
+    }
 
     debug_control(ENABLE);
     return rval;
@@ -225,7 +234,52 @@ int test_sha_cb(WINDOW *window) {
 
 int test_sha() {
     int rval = 0;
+    char * str = "This is a test!";
+    char * hash = 0;
+    char * key = "12345678901234567890123456789012";
+    char * iv = "1234567890123456";
     debug_control(DISABLE);
+
+    hash = (char *) message_hash(str);
+    if (hash == NULL || strcmp(hash, str) == 0) {
+        rval = 1;
+    }
+    if (hash) {
+        free(hash);
+    }
+
+    debug_control(ENABLE);
+    return rval;
+}
+
+int test_message_cb(WINDOW *window) {
+    debug_control(ENABLE);
+    endwin();
+    system("clear");
+    print_result("Message", test_message(), getmaxx(window));
+    debug_output("Press ENTER to continue!");
+    while ((getchar() != '\n'));
+    return 0;
+}
+
+int test_message() {
+    int rval = 0;
+    message_t message;
+    char * str = "This is a test!";
+    char * key = "12345678901234567890123456789012";
+    char * iv = "1234567890123456";
+    debug_control(DISABLE);
+
+    rval |= message_initialize(&message);
+
+    strcpy(message.payload, str);
+
+    rval |= message_pack(&message, key, iv);
+    rval |= message_unpack(&message, key, iv);
+
+    if (strcmp(message.payload, str) != 0) {
+        rval = 1;
+    }
 
     debug_control(ENABLE);
     return rval;
@@ -243,6 +297,8 @@ int test_channels_cb(WINDOW *window) {
 int test_channels() {
     int rval = 0;
     debug_control(DISABLE);
+
+
 
     debug_control(ENABLE);
     return rval;

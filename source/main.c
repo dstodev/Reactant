@@ -142,9 +142,9 @@ void main_menu() {
     add_panel_button(panels[2], create_button("Light", test_light_cb));
     add_panel_button(panels[2], create_button("Pressure", test_pressure_cb));
     add_panel_button(panels[2], create_button("Temperature", test_temperature_cb));
-    add_panel_button(panels[2], create_button("Message", test_message_cb));
     add_panel_button(panels[2], create_button("AES256", test_aes_cb));
     add_panel_button(panels[2], create_button("SHA256", test_sha_cb));
+    add_panel_button(panels[2], create_button("Message", test_message_cb));
     add_panel_button(panels[2], create_button("Channels", test_channels_cb));
 
     panels[0]->selected = 1;
