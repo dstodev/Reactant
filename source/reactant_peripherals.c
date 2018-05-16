@@ -34,7 +34,7 @@ int _i2c_open(const char * device)
 
             if ((file = open(device, O_RDWR)) < 0)
             {
-                fprintf(stderr, "%s\n", "_i2c_open() failed to open I2C device!");
+                debug_output("%s\n", "_i2c_open() failed to open I2C device!");
                 return -1;
             }
 
@@ -66,11 +66,11 @@ int peripheral_init()
 
     if ((rval = peripheral_spi_init()) < 0)
     {
-        fprintf(stderr, "%s\n", "peripheral_init() failed! Could not initialize SPI peripherals!");
+        debug_output("%s\n", "peripheral_init() failed! Could not initialize SPI peripherals!");
     }
     else if ((rval = peripheral_i2c_init()) < 0)
     {
-        fprintf(stderr, "%s\n", "peripheral_init() failed! Could not initialize I2C peripherals!");
+        debug_output("%s\n", "peripheral_init() failed! Could not initialize I2C peripherals!");
     }
 
     return rval;
@@ -93,13 +93,13 @@ int peripheral_spi_init()
 {
     if (!bcm2835_init())
     {
-        fprintf(stderr, "%s\n", "peripheral_spi_init() failed. Try running as root user!");
+        debug_output("%s\n", "peripheral_spi_init() failed. Try running as root user!");
         return -1;
     }
 
     if (!bcm2835_spi_begin())
     {
-        fprintf(stderr, "%s\n", "peripheral_spi_init() failed. Try running as root user!");
+        debug_output("%s\n", "peripheral_spi_init() failed. Try running as root user!");
         return -1;
     }
 
@@ -150,7 +150,7 @@ int i2c_set_addr(const char addr)
     // Set I2C address
     if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
-        fprintf(stderr, "%s\n", "_i2c_set_addr() failed to set I2C address!");
+        debug_output("%s\n", "_i2c_set_addr() failed to set I2C address!");
         _i2c_close();
         return -1;
     }
@@ -165,7 +165,7 @@ char smbus_read_byte(const char reg)
 
     if ((rval = i2c_smbus_read_byte_data(file, reg)) < 0)
     {
-        fprintf(stderr, "%s\n", "smbus_read_byte() failed to read!");
+        debug_output("%s\n", "smbus_read_byte() failed to read!");
         _i2c_close();
     }
 
@@ -179,7 +179,7 @@ int smbus_write_byte(const char reg, const char data)
 
     if ((rval = i2c_smbus_write_byte_data(file, reg, data)) < 0)
     {
-        fprintf(stderr, "%s\n", "smbus_write_byte() failed to transmit!");
+        debug_output("%s\n", "smbus_write_byte() failed to transmit!");
         _i2c_close();
     }
 
@@ -193,7 +193,7 @@ short smbus_read_word(const char reg)
 
     if ((rval = i2c_smbus_read_word_data(file, reg)) < 0)
     {
-        fprintf(stderr, "%s\n", "smbus_read_word() failed to read!");
+        debug_output("%s\n", "smbus_read_word() failed to read!");
         _i2c_close();
     }
 
@@ -207,7 +207,7 @@ int smbus_write_word(const char reg, const short data)
 
     if ((rval = i2c_smbus_write_word_data(file, reg, data)) < 0)
     {
-        fprintf(stderr, "%s\n", "smbus_write_word() failed to transmit!");
+        debug_output("%s\n", "smbus_write_word() failed to transmit!");
         _i2c_close();
     }
 
@@ -226,10 +226,9 @@ int mcp3008_read_channel(int channel)
 
     if (channel < 0 || channel > 7)
     {
-        fprintf(stderr, "%s\n", "mcp3008_read_channel() failed. Invalid channel parameter!");
+        debug_output("%s\n", "mcp3008_read_channel() failed. Invalid channel parameter!");
         return 1;
     }
-
 
     data[0] = 0x01;
     data[1] = 0x80 | (char) channel << 4;
@@ -255,7 +254,7 @@ int tsl2561_enable()
 
     if (smbus_read_byte(TSL2561_CONTROL) == 0x33)
     {
-        fprintf(stderr, "%s\n", "tsl2561_enable() failed. Light sensor already enabled!");
+        debug_output("%s\n", "tsl2561_enable() failed. Light sensor already enabled!");
         rval = -1;
     }
     else
@@ -265,7 +264,7 @@ int tsl2561_enable()
 
         if ((val = smbus_read_byte(TSL2561_CONTROL)) != 0x03)
         {
-            fprintf(stderr, "tsl2561_enable() failed. Returned: 0x%x\n", val);
+            debug_output("tsl2561_enable() failed. Returned: 0x%x\n", val);
             rval = -2;
         }
     }
@@ -280,7 +279,7 @@ int tsl2561_disable()
 
     if (smbus_read_byte(TSL2561_CONTROL) == 0x00)
     {
-        fprintf(stderr, "tsl2561_disable() failed. Light sensor already disabled!");
+        debug_output("tsl2561_disable() failed. Light sensor already disabled!");
         rval = -1;
     }
     else
@@ -290,7 +289,7 @@ int tsl2561_disable()
 
         if ((val = smbus_read_byte(TSL2561_CONTROL)) != 0x00)
         {
-            fprintf(stderr, "tsl2561_disabled() failed. Returned: 0x%x\n", val);
+            debug_output("tsl2561_disabled() failed. Returned: 0x%x\n", val);
             rval = -2;
         }
     }

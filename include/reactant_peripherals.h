@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <linux/i2c-dev.h>
 #include <unistd.h>
+#include "reactant_util.h"
 
 #ifdef __arm__
 #include <bcm2835.h>

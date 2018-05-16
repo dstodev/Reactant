@@ -107,15 +107,12 @@ int _configure_callback(WINDOW *window) {
 }
 
 int _core_test_callback(WINDOW *window) {
-    clear();
-    refresh();
     endwin();
     core_integration_test();
     return 0;
 }
 
 int _node_test_callback(WINDOW *window) {
-    clear();
     endwin();
     node_integration_test();
     return 0;
@@ -138,12 +135,17 @@ void main_menu() {
     add_panel_button(panels[1], create_button("Test Reactant Node", _node_test_callback));
 
     panels[2] = create_panel("Tests", 7, 3);
-    add_panel_button(panels[2], create_button("SPI", NULL));
-    add_panel_button(panels[2], create_button("I2C", NULL));
-    add_panel_button(panels[2], create_button("Message", NULL));
-    add_panel_button(panels[2], create_button("AES256", NULL));
-    add_panel_button(panels[2], create_button("SHA256", NULL));
-    add_panel_button(panels[2], create_button("Channels", NULL));
+    add_panel_button(panels[2], create_button("All Tests", test_all));
+    add_panel_button(panels[2], create_button("SPI", test_spi_cb));
+    add_panel_button(panels[2], create_button("I2C", test_i2c_cb));
+    add_panel_button(panels[2], create_button("Humidity", test_humidity_cb));
+    add_panel_button(panels[2], create_button("Light", test_light_cb));
+    add_panel_button(panels[2], create_button("Pressure", test_pressure_cb));
+    add_panel_button(panels[2], create_button("Temperature", test_temperature_cb));
+    add_panel_button(panels[2], create_button("Message", test_message_cb));
+    add_panel_button(panels[2], create_button("AES256", test_aes_cb));
+    add_panel_button(panels[2], create_button("SHA256", test_sha_cb));
+    add_panel_button(panels[2], create_button("Channels", test_channels_cb));
 
     panels[0]->selected = 1;
     panels[0]->items[0]->selected = 1;
