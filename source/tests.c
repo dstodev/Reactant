@@ -313,8 +313,8 @@ int test_channels_cb(WINDOW *window) {
     return 0;
 }
 
-int _returns;
-void _test_channels_callback(char *message) {
+static int _returns;
+static void _test_channels_callback(char *message) {
     _returns += 1;
 }
 
@@ -373,6 +373,7 @@ int test_channels() {
         nanosleep(&delay, NULL);
 
         rval |= (_returns != 4);
+        debug_output("%d\n", _returns);
 
         stop_node_client(&core);
 

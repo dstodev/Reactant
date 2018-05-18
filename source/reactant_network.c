@@ -4,6 +4,8 @@
 const int LISTEN_QUEUE = 16;
 const int TABLE_SIZE = 10;
 
+static char _sublisten_init = 0;
+
 static int _send_to_core(core_t * core, char * message, int size) {
     int bytes;
 
@@ -91,15 +93,15 @@ static void * _subscription_listener(void *_pack) {
     int bytes = 0;
     char found;
 
-    const char * key = pack->core->key;
-    const char * iv = pack->core->iv;
-
     // Wait for and handle incoming relayed messages
     while (1) {
         // Clear buffers
         memset(buffer, 0, sizeof(buffer));
         memset(channel, 0, sizeof(channel));
         found = 0;
+
+        const char * key = pack->core->key;
+        const char * iv = pack->core->iv;
 
         //// GET CHANNEL /////////////////////////////////////////////////////////////////
         if ((bytes = read(pack->core->sock, buffer, sizeof(buffer))) != sizeof(buffer)) {
@@ -373,7 +375,7 @@ int start_core_server(int port, char *key, char *iv) {
                 // Read incoming message
                 if ((bytes = read(handle, buffer, sizeof(buffer))) != sizeof(buffer)) {
                     if (bytes) {
-                        debug_output("Invalid initial read, rval: [%d]!\n", bytes);
+                        debug_output("Invalid initial read, rval: [%d][%d]!\n", bytes, errno);
                     } else {
                         // Read 0 bytes; Node terminated connection
                         debug_output("Node terminated connection!\n");
@@ -401,7 +403,7 @@ int start_core_server(int port, char *key, char *iv) {
 
                     // Read payload message
                     if ((bytes = read(handle, buffer, sizeof(buffer))) != sizeof(buffer)) {
-                        debug_output("Invalid payload read, rval: [%d]!\n", bytes);
+                        debug_output("Invalid payload read, rval: [%d][%d]!\n", bytes, errno);
                         continue;
                     }
 
@@ -623,6 +625,8 @@ int stop_node_client(core_t * core)
             close(core->sock);
             core->sock = 0;
         }
+
+        _sublisten_init = 2;
     }
     else
     {
@@ -717,10 +721,8 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
     const char * key = core->key;
     const char * iv = core->iv;
 
-    static char init = 0;
     static subpack_t pack;
-
-    pthread_t listener;
+    static pthread_t listener;
 
     if (core && channel && callback)
     {
@@ -734,8 +736,18 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
          * Set up listener server
          */
 
-        if (!init)
+        if (_sublisten_init == 0 || _sublisten_init == 2)
         {
+            if (_sublisten_init == 2)
+            {
+                free(pack.subs);
+
+                pthread_mutex_destroy(pack.lock);
+                free(pack.lock);
+
+                pthread_cancel(listener);
+            }
+
             pack.core = core;
             pack.size = 1;
             pack.subs = calloc(1, sizeof(subscription_t));
@@ -752,9 +764,9 @@ int subscribe(core_t * core, char * channel, void (*callback)(char *))
                 return 1;
             }
 
-            init = 1;
+            _sublisten_init = 1;
         }
-        else
+        else if (_sublisten_init == 1)
         {
             pthread_mutex_lock(pack.lock);
 

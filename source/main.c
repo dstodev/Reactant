@@ -163,7 +163,7 @@ void main_menu() {
 
 
 void core_integration_test() {
-    debug_control(ENABLE);
+    debug_control(DISABLE);
 
     gencfg_t config;
     if (ini_browse(&_gencfg_handler, &config, CONF_INI) < 0) {
@@ -171,18 +171,19 @@ void core_integration_test() {
         return;
     }
 
+    debug_control(ENABLE);
     start_core_server(config.port, config.key, config.iv);
 }
 
 void node_integration_test() {
 #ifdef __arm__
-    debug_control(DISABLE);
-
     core_t core;
     int rval = 0;
     float temperature = 0;
     char buffer[250];
     short ch0, ch1;
+
+    debug_control(DISABLE);
 
     gencfg_t config;
     if (ini_browse(&_gencfg_handler, &config, CONF_INI) < 0) {
