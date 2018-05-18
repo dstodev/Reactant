@@ -829,20 +829,20 @@ int message_debug_hex(char * message)
 
     if (message)
     {
-        fprintf(stderr, "%4c", ' ');
+        debug_output("%4c", ' ');
         for (int i = 0; i < cols; ++i)
         {
-            fprintf(stderr, "%-2x ", i);
+            debug_output("%-2x ", i);
         }
-        fprintf(stderr, "\n");
+        debug_output("\n");
         for (int i = 0; i < len / cols + (len % cols ? 1 : 0); ++i)
         {
-            fprintf(stderr, "%2x: ", i);
+            debug_output("%2x: ", i);
             for (int j = 0; j < cols && i * cols + j < len; ++j)
             {
-                fprintf(stderr, "%02x ", message[i * cols + j]);
+                debug_output("%02x ", message[i * cols + j]);
             }
-            fprintf(stderr, "\n");
+            debug_output("\n");
         }
     }
 

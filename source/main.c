@@ -229,7 +229,7 @@ void node_integration_test() {
                 publish(&core, "Light-1", buffer);
 
                 // Pressure
-                rval = mcp3008_read_channel(0);
+                rval = 1023 - mcp3008_read_channel(0);
                 snprintf(buffer, sizeof(buffer), "%d", rval);
                 publish(&core, "Pressure-1", buffer);
 

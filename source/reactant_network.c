@@ -472,7 +472,6 @@ int start_core_server(int port, char *key, char *iv) {
                             channel_target = calloc(1, sizeof(channel_t));
                             channel_target->size = 1;
 
-                            // TODO: Free the following allocated memory
                             channel_target->nodes = calloc(1, sizeof(node_t));
 
                             channel_target->nodes[0].addr = calloc(1, sizeof(struct sockaddr_in));

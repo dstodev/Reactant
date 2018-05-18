@@ -94,8 +94,13 @@ int test_humidity() {
     int rval = 0;
     debug_control(DISABLE);
 
-    // Strictly uses SPI communications with analog voltage output
-    rval = test_spi();
+    rval |= peripheral_spi_init();
+
+    // Humidity ADC value should not be less than 50
+    rval |= (mcp3008_read_channel(2) < 50);
+    debug_output("%d\n", mcp3008_read_channel(2));
+
+    rval |= peripheral_spi_term();
 
     debug_control(ENABLE);
     return rval;
@@ -125,10 +130,12 @@ int test_light() {
 
     // Ensure light can be enabled and disabled
     if ((rval2 = tsl2561_enable()) == -1) {
+        // "Already enabled" should not be treated as fail
         rval2 = 0;
     }
     rval |= rval2;
     if ((rval2 = tsl2561_disable()) == -1) {
+        // "Already disabled" should not be treated as fail
         rval2 = 0;
     }
     rval |= rval2;
@@ -154,7 +161,13 @@ int test_pressure() {
     debug_control(DISABLE);
 
     // Strictly uses SPI communications with analog voltage output
-    rval = test_spi();
+    rval |= peripheral_spi_init();
+
+    // Pressure ADC value should not be less than 50
+    rval |= (mcp3008_read_channel(0) < 50);
+    debug_output("%d\n", mcp3008_read_channel(0));
+
+    rval |= peripheral_spi_term();
 
     debug_control(ENABLE);
     return rval;
@@ -174,8 +187,13 @@ int test_temperature() {
     int rval = 0;
     debug_control(DISABLE);
 
-    // Strictly uses SPI communications with analog voltage output
-    rval = test_spi();
+    rval |= peripheral_spi_init();
+
+    // Temperature ADC value should not be less than 50
+    rval |= (mcp3008_read_channel(1) < 50);
+    debug_output("%d\n", mcp3008_read_channel(1));
+
+    rval |= peripheral_spi_term();
 
     debug_control(ENABLE);
     return rval;
@@ -236,8 +254,6 @@ int test_sha() {
     int rval = 0;
     char * str = "This is a test!";
     char * hash = 0;
-    char * key = "12345678901234567890123456789012";
-    char * iv = "1234567890123456";
     debug_control(DISABLE);
 
     hash = (char *) message_hash(str);
@@ -275,7 +291,9 @@ int test_message() {
     strcpy(message.payload, str);
 
     rval |= message_pack(&message, key, iv);
+    message_debug_hex(message.message_string);
     rval |= message_unpack(&message, key, iv);
+    message_debug_hex(message.message_string);
 
     if (strcmp(message.payload, str) != 0) {
         rval = 1;
@@ -294,12 +312,73 @@ int test_channels_cb(WINDOW *window) {
     while ((getchar() != '\n'));
     return 0;
 }
+
+int _returns;
+void _test_channels_callback(char *message) {
+    _returns += 1;
+}
+
+typedef struct _gencfg_t {
+        char ip[16];
+        short port;
+        char key[33];
+        char iv[17];
+} gencfg_t;
+
+static int _gencfg_handler(const mTCHAR *section, const mTCHAR *key, const mTCHAR *value, void *user) {
+    gencfg_t *gencfg = (gencfg_t *)user;
+
+    #define MATCH(s, k) (strcmp(s, section) == 0 && strcmp(k, key) == 0)
+    if (MATCH("general", "core-ip")) {
+        strcpy(gencfg->ip, value);
+    } else if (MATCH("general", "port")) {
+        gencfg->port = (short) atoi(value);
+    } else if (MATCH("security", "key")) {
+        strcpy(gencfg->key, value);
+    } else if (MATCH("security", "iv")) {
+        strcpy(gencfg->iv, value);
+    }
+    return 1;
+}
+
 int test_channels() {
     int rval = 0;
+    core_t core;
+
+    struct timespec delay;
+    delay.tv_sec = 1;
+    delay.tv_nsec = 0;
+
+    gencfg_t config;
+    if (ini_browse(&_gencfg_handler, &config, CONF_INI) < 0) {
+        debug_output("Failed to load configuration settings!\n");
+        rval |= 1;
+    }
+
+    _returns = 0;
     debug_control(DISABLE);
 
+    if (!start_node_client(&core, 0x941, config.ip, config.port, config.key, config.iv)) {
+        subscribe(&core, "Test-1", _test_channels_callback);
+        subscribe(&core, "Test-2", _test_channels_callback);
+        subscribe(&core, "Test-3", _test_channels_callback);
+        subscribe(&core, "Test-4", _test_channels_callback);
 
+        publish(&core, "Test-1", "Channel test publish!");
+        publish(&core, "Test-2", "Channel test publish!");
+        publish(&core, "Test-3", "Channel test publish!");
+        publish(&core, "Test-4", "Channel test publish!");
 
+        // Wait one second
+        nanosleep(&delay, NULL);
+
+        rval |= (_returns != 4);
+
+        stop_node_client(&core);
+
+    } else {
+        rval |= 1;
+    }
     debug_control(ENABLE);
     return rval;
 }
