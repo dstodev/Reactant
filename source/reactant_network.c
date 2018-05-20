@@ -315,9 +315,13 @@ int start_core_server(int port, char *key, char *iv) {
     // Ignore SIGPIPE signals
     signal(SIGPIPE, SIG_IGN);
 
+    debug_output("\n");
+
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0) {
         debug_output("Could not set socket options!\n");
         return 1;
+    } else {
+        debug_output("Socket options set!\n");
     }
 
     // Bind server socket to the given port
@@ -325,6 +329,8 @@ int start_core_server(int port, char *key, char *iv) {
         debug_output("Could not bind to %d:%d!\n", ntohl(server_addr.sin_addr.s_addr), ntohs(server_addr.sin_port));
         close(sock);
         return 1;
+    } else {
+        debug_output("Server bind to %d:%d successful!\n", ntohl(server_addr.sin_addr.s_addr), ntohs(server_addr.sin_port));
     }
 
     // Start listening on the provided port
@@ -332,12 +338,15 @@ int start_core_server(int port, char *key, char *iv) {
         debug_output("Could not listen for incoming connections!\n");
         close(sock);
         return 1;
+    } else {
+        debug_output("Listening for incoming connections!\n");
     }
+
     FD_ZERO(&active_fds);
     FD_SET(sock, &active_fds);
     max_fd = sock;
 
-    debug_output("\nCore initialized, awaiting connections...\n");
+    debug_output("Core initialized, awaiting connections...\n");
 
     while(1) {
         // Clear buffers
@@ -593,7 +602,7 @@ int start_node_client(core_t * core, unsigned int id, char * ip, int port, char 
             return 1;
         } else {
             // Connection succeeded
-            debug_output("Conected to Core!\n");
+            debug_output("Conected to Core at %d:%d!\n", ntohl(server_addr.sin_addr.s_addr), ntohs(server_addr.sin_port));
             core->addr = calloc(1, sizeof(server_addr));
             *(core->addr) = server_addr;
             core->sock = sock;

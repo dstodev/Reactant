@@ -128,7 +128,7 @@ int test_light() {
         rval |= 1;
     }
 
-    // Ensure light can be enabled and disabled
+    /*// Ensure light can be enabled and disabled
     if ((rval2 = tsl2561_enable()) == -1) {
         // "Already enabled" should not be treated as fail
         rval2 = 0;
@@ -139,7 +139,7 @@ int test_light() {
         rval2 = 0;
     }
     rval |= rval2;
-
+    */
     rval |= peripheral_i2c_term();
 
     debug_control(ENABLE);
