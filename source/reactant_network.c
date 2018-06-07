@@ -602,7 +602,7 @@ int start_node_client(core_t * core, unsigned int id, char * ip, int port, char 
             return 1;
         } else {
             // Connection succeeded
-            debug_output("Conected to Core at %d:%d!\n", ntohl(server_addr.sin_addr.s_addr), ntohs(server_addr.sin_port));
+            debug_output("Conected to Core at %s:%d!\n", ip, ntohs(server_addr.sin_port));
             core->addr = calloc(1, sizeof(server_addr));
             *(core->addr) = server_addr;
             core->sock = sock;

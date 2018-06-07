@@ -125,7 +125,7 @@ void main_menu() {
     panel_t * panels[3];
 
     panels[0] = create_panel("Operation", 2, 3); // 2, 3
-    add_panel_button(panels[0], create_button("Start Reactant Core", NULL));
+    add_panel_button(panels[0], create_button("Start Reactant Core", _core_test_callback));
     add_panel_button(panels[0], create_button("Configure", _configure_callback));
     add_panel_button(panels[0], create_button("Exit", NULL));
 
@@ -183,7 +183,7 @@ void node_integration_test() {
     char buffer[250];
     short ch0, ch1;
 
-    debug_control(DISABLE);
+    debug_control(ENABLE);
 
     gencfg_t config;
     if (ini_browse(&_gencfg_handler, &config, CONF_INI) < 0) {
